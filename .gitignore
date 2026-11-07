@@ -1,0 +1,15 @@
+.env
+
+*.log
+.DS_Store
+backend/target/
+backend/*.jar
+backend/.idea/
+backend/*.iml
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.next/
+app/node_modules/
+app/build/
+uploads/
