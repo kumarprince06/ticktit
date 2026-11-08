@@ -11,6 +11,6 @@
 - `db-design.md` - DB schema
 
 ## Decisions (Why This How?)
-- `adr/` - Architecture Decision Records (ADR-001 to ADR-006)
-    - Why Monorepo? Why Postgres? Why Redis? Why Kafka? Why JWT? Why Spring Boot?
+- `adr/` - Architecture Decision Records (ADR-001 to ADR-007)
+    - Why Monorepo? Why Postgres? Why Redis? Why Kafka? Why JWT? Why Spring Boot? Why a generic booking core?
     - Read ADRs before changing any tech choice.

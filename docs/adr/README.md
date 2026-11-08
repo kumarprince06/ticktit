@@ -7,6 +7,7 @@ Index:
 - ADR-004: Kafka Notifications
 - ADR-005: JWT Auth
 - ADR-006: Spring Boot + Java 21
+- ADR-007: Generic Booking Core
 
 How to add new ADR:
 1. Copy ADR-001 template
