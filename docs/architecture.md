@@ -1,24 +1,23 @@
-# Ticktit Architecture
+# Ticktit - Architecture - v3 Final
 
-## Goal
-BookMyShow is for solo booking. Ticktit is for group booking.
-Create group -> pick seats together -> split payment -> book.
+## System Overview
+Client: React Web App (Mobile Responsive) -> API Gateway / Backend: Spring Boot 3, Java 21 -> DB PostgreSQL, Cache Redis, Queue Kafka, File Storage Local/S3.
 
-## Monorepo
-ticktit/
-├── backend/   - Spring Boot 3, Java 21, PostgreSQL, Redis, Kafka
-├── frontend/  - React + Vite + Tailwind
-├── app/       - Mobile (Later)
-├── docs/      - Architecture, API, DB
-└── .github/   - CI/CD
-## High Level Flow
-User -> Frontend (React) -> Backend (Spring Boot API)
--> PostgreSQL (Bookings, Shows, Seats)
--> Redis (Seat Lock - 5 min hold)
--> Kafka (Booking Confirmed Event -> Notification / Payment)
+## Components
+Frontend React: Pages Home, Movie Detail, Seat Map, Group Page, My Bookings, Success. Calls REST APIs, Polling for live seat map (Phase 2 WebSocket).
+Backend Spring Boot: Shared core (Auth, Group, Booking, Payment, Refund, Notification) + one module per vertical (MVP: Movie module with Movie, Show, Seat). Core never imports a vertical (ADR-007). Services with @Transactional. Security Spring Security + JWT.
+PostgreSQL: Source of truth for money. All bookings/payments in transaction.
+Redis: Seat lock with TTL 300s, Seat map cache, Rate limit.
+Kafka: Topics booking.confirmed, booking.cancelled, payment.success. Consumers: SMS Consumer, Email Consumer, Refund Consumer. MVP can run Kafka in Docker, or mock with in-memory queue, interface same.
 
-## Key Decisions
-- **Seat Lock:** Redis with TTL 5 min. If not paid in 5 min, seat auto-released.
-- **Group Booking:** Group has leader + members. Leader creates group, members join via code.
-- **Split Payment:** Each member pays own share. Booking confirmed only when all paid OR leader pays full.
-- **Idempotency:** Booking API uses Idempotency-Key header to avoid double charge.
+## Booking Flow - Critical Path
+1. Leader POST /bookings/lock -> Backend checks Redis, if free sets lock TTL 300, returns lockedUntil. 2. Members POST /payments/pay with Idempotency-Key -> Backend checks DB for duplicate key, calls Mock Gateway, saves payment. 3. If all paid -> @Transactional: Update bookings CONFIRMED, seats BOOKED, Publish Kafka booking.confirmed. 4. Consumers send SMS/Email with QR.
+
+## Concurrency Control
+Redis SET NX (only if not exists) ensures only 1 group wins seat. DB Unique Constraint on seats (show_id + seat_no + status BOOKED) as second line of defence. Idempotency-Key UNIQUE in payments prevents double charge.
+
+## Scalability
+MVP: Single server, Docker Compose: app + postgres + redis + kafka. 100 concurrent users. Phase 2: Multiple app instances behind Load Balancer, Redis shared, Postgres primary.
+
+## Security
+BCrypt passwords, JWT in Authorization Bearer header, No password in logs, Input validation, SQL Injection prevented via JPA.

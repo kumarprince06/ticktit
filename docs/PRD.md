@@ -1,80 +1,87 @@
-# Ticktit - Product Requirements Document (PRD)
-Version: 1.0 | Author: Prince Kumar Sharma | Date: Nov 2026
+# Ticktit - Product Requirements Document (PRD) - v3 Final
+Version: 3.0 | Author: Prince Kumar Sharma | Date: 08 Nov 2026
 
-## 1. Problem Statement
-BookMyShow, Paytm Movies are built for SOLO booking.
-Real life: 80% of movie plans in India are GROUP plans - 3-5 friends, family.
-Current pain:
-- One person books for all, then has to ask money on WhatsApp / UPI - awkward, money stuck.
-- Friends can't see same seat map together, they call each other "Which seat did you pick?"
-- If one friend cancels, whole booking is messed up.
-- No way to split payment at booking time.
-
-## 2. Solution - Ticktit
+## 1. Executive Summary
+Ticktit is a group-first booking platform for India. It starts with movie tickets and grows into theatre / live shows, bus, train and full travel packages - all with the same group + split-pay experience.
 Tagline: "Book Together, Pay Separately, Sit Together."
-Ticktit is a group-first movie ticket booking platform.
-Create group -> Invite friends via code/link -> Pick seats TOGETHER on same live map -> Each pays own share -> Booking confirmed.
+BookMyShow solves: "I want to book a ticket."
+Ticktit solves: "We want to book TOGETHER, sit TOGETHER, and pay SEPARATELY without awkward money chasing."
 
-## 3. Target Users
-1. Primary: College students (18-24) - Siliguri, Kolkata, Patna - Group of 3-6 friends
-2. Secondary: Families (30-45) - Family of 4, wants to sit together
-3. Tertiary: Office colleagues - Team outing
+## 2. Problem Statement
+In India, 80% movie plans are group plans. But all apps are built for solo booking.
+Real WhatsApp example:
+Prince: "Pushpa 2, Saturday 8 PM, INOX Siliguri, shall we go?"
+Rahul: "Yes, 2 tickets"
+Aman: "1 for me too"
+Prince books 4 tickets, pays Rs 1000. Next day Prince: "Bro, send me Rs 250." Aman forgets. Prince loses money + friendship awkwardness.
 
-## 4. Goals & Success Metrics
-- MVP Goal: User can create group, invite 3 friends, lock seats, split pay, get ticket in < 2 min.
-- Success Metrics:
-    - Group creation -> Booking conversion > 40%
-    - Seat lock -> Payment completion > 70%
-    - Average group size: 3.5
-    - Payment failure / double charge: 0%
+Pain Points:
+1. Money Pain: Leader pays for all, then chases money.
+2. Seat Pain: Friends cannot see same seat map. They call: "Which seats did you take?"
+3. Coordination Pain: If one friend cancels, whole booking messed up.
+4. Trust Pain: Friends do not know if seat is actually booked.
 
-## 5. User Personas
-### Persona 1: Prince - Group Leader (21, Student)
-- Always plans movie, always pays first, then chases friends for money.
-- Need: "I should not pay for everyone, they should pay their own."
-### Persona 2: Rahul - Group Member (20, Student)
-- Gets WhatsApp link, wants to join in 1 click, see seats, pay own share via UPI.
-- Need: "I don't want to install app, just link should work."
+## 3. Solution
+Create Group -> Share Code/Link -> Friends Join -> See SAME Live Seat Map -> Pick Seats Together -> Each Pays Own Share -> All Get QR Ticket.
 
-## 6. User Journey (Happy Path)
-1. Prince opens Ticktit -> Searches "Pushpa 2" -> Selects INOX Siliguri, 8 PM show
-2. Clicks "Create Group" -> Gets code TICK12 + shareable link
-3. Shares link on WhatsApp group
-4. Rahul, Aman, Sneha click link -> Join group
-5. All 4 see LIVE seat map, same seats updating in real-time
-6. Prince selects A1,A2,A3,A4 -> Clicks "Lock for 5 min"
-7. Each member sees "Pay Rs 250" button -> Pays via UPI
-8. When all 4 paid -> Screen shows "Booking Confirmed" + QR Ticket
-9. Each member gets SMS + Email with ticket
+## 4. Target Users
+Primary: College students 18-24, Siliguri, Kolkata, Patna, Group 3-6 friends.
+Secondary: Families 30-45, Family of 4, wants to sit together.
+Tertiary: Office colleagues, Team outing 5-8 people.
 
-## 7. Core Features (MVP - Must Have)
-- F1: Auth (Register/Login via Email + OTP)
-- F2: Browse Movies, Theatres, Shows
-- F3: Live Seat Map
-- F4: Create Group + Join via Code/Link
-- F5: Seat Lock (5 min, Redis)
-- F6: Split Payment (Each pays own)
-- F7: Booking Confirmation + QR Ticket
-- F8: My Bookings History
+## 5. User Personas - Full
 
-## 8. Non-MVP (Phase 2)
-- Vote for movie/time (Poll in group)
-- Chat inside group
-- Food & Beverages add-on
-- Offer / Coupon split
-- Mobile App
+### Persona 1: Prince Kumar Sharma - Planner / Group Leader
+Age 21, Siliguri, B.Tech Student + Developer, Android, UPI PhonePe, WhatsApp 24x7.
+Goals: Plan movie in 2 min not 2 hours. Should NOT pay for everyone. See who paid, who did not in one screen.
+Frustrations: Pays Rs 1000, friends forget. Friends say "Take any seat" then complain "We wanted a corner". Has to send screenshot of seats.
+Happy Scenario: Opens Ticktit, searches Pushpa 2, INOX 8 PM, Creates Group -> Code TICK12, Shares on WhatsApp, Selects A1-A4, Locks, Sees Rahul PAID, Aman PENDING, Sneha PAID, Clicks Remind Aman, All paid -> Booking Confirmed + QR.
+Sad Scenario: Aman does not pay in 5 min. Timer expires. Prince sees: "Aman removed, seats released. Lock again with 3 members or pay for Aman." Prince chooses Pay For Aman -> Pays Rs 250 extra -> Booking confirmed.
 
-## 9. Out of Scope (Will NOT Build in MVP)
-- Flight / Bus / Train booking
-- Theatre admin panel (use dummy data)
-- Refund automation (manual for MVP)
+### Persona 2: Rahul Verma - Follower / Member
+Age 20, Siliguri, B.Com Student, Android, UPI, does not like installing apps.
+Goals: Click the link, join, pay, done. Wants to see own seat.
+Frustrations: Has to install app just to see seat. Leader says "Booked it" - Rahul wants own ticket.
+Happy Scenario: Gets WhatsApp link ticktit.in/join/TICK12, Clicks, Sees Prince Group - Pushpa 2 - INOX 8 PM - Seats A1-A4, Clicks Join, Enters name + phone, Sees Pay Rs 250, Pays via UPI, Sees PAID green tick, Gets SMS with QR.
+Edge Scenario: Pays, internet disconnects. Thinks money deducted, ticket not shown. Re-opens link, Ticktit shows Payment Successful because Idempotency-Key prevented double charge.
+
+### Persona 3: Sneha Roy - Picky / Seat Conscious
+Age 22, Kolkata, Working Professional. Wants corner / aisle seat, wants to see seat map before paying.
+Goals: Know who sits where. If she does not like the seat, she will not join.
+Scenario: Joins group, sees live map A1-Prince, A2-Rahul, A3-Aman, A4-Sneha. Says "I want A5, not A4." Prince changes to A5 before lock. Sneha happy, pays.
+
+### Persona 4: Sharma Family - Family User
+Father 42, Mother 38, Kids 12, 10, Patna. Father books for family, wants all 4 together, wants to pay in one go.
+Scenario: Father creates group, adds family, Selects Pay For All -> Pays Rs 1000 once -> Gets 4 tickets in one QR. This is why Pay For All is needed.
+
+## 6. User Journeys
+Journey 1 - Leader: Login -> Search Movie -> Select Theatre/Show -> Create Group -> Share Link -> Wait for join -> Select Seats -> Lock 5 min -> See Payment Status -> Remind Pending -> All Paid -> Booking Confirmed + QR + SMS/Email to all.
+Journey 2 - Member: Click WhatsApp Link -> See Group Info -> Join -> See Seat Map + Your Seat -> Pay Rs 250 -> UPI Success -> Green Tick + QR Ticket.
+Journey 3 - Failure Friend Does Not Pay: Lock, Timer 5 min, Aman does not pay, Timer 00:00, Seats auto-release, Leader sees Booking Cancelled - Aman did not pay. Paid members refunded. Leader can create new group with 3 members OR Pay for Aman.
+Journey 4 - Double Booking: Group A locks A1 at 8:00:00, Group B tries A1 at 8:00:01, System: "A1 already locked", Group B must choose A5. No double booking.
+
+## 7. Features
+MVP Must Have: F1 Auth, F2 Browse Movies/Theatres/Shows, F3 Live Seat Map, F4 Create Group + Join via Code/Link, F5 Seat Lock 5 min Redis, F6 Split Payment + Pay For All, F7 Booking Confirm + QR Ticket, F8 My Bookings.
+Phase 2: Poll Vote for Movie/Time, Group Chat, Food Add-on, Coupons Split, Mobile App, Google Login.
+Out of Scope for MVP: Bus, Train, Travel Packages (see Roadmap), Flight, Theatre Admin Panel, Refund Automation (manual in MVP).
+
+## 8. Success Metrics
+Group Creation to Booking > 40%, Lock to Pay Completion > 70%, Avg Group Size 3.5, Double Booking 0, Double Charge 0, Join via Link < 30 sec.
+
+## 9. Risks
+Seat double-booking -> Redis Lock + DB Unique Constraint. Payment double-charge -> Idempotency-Key. Friend does not pay -> Auto-release + Leader Pay-For-All. Redis down -> Fallback to DB lock.
 
 ## 10. Competitors
-- BookMyShow: Solo booking, no split pay, no group map
-- Paytm: Same as above
-- Ticktit Edge: Group-first, Split-pay native, Live collaborative seat map
+BookMyShow: Solo, No Split, No Group Map. Paytm Movies: Solo, Discounts, No Group. Ticktit Edge: Group-first, Split-pay native, Live collaborative map, WhatsApp-first onboarding.
 
-## 11. Risks
-- Seat double-booking if two groups lock same seat -> Mitigation: Redis lock + DB unique constraint
-- Payment double-charge if user clicks twice -> Mitigation: Idempotency Key
-- Friend doesn't pay in 5 min -> Mitigation: Auto-release + Leader can pay for him / Remove him
+## 11. Roadmap - Beyond Movies
+Same core everywhere: Group -> Hold inventory -> Each pays own share -> Confirm or refund. Only the inventory changes. See ADR-007.
+
+| Phase | Vertical | What is new | Main risk |
+| --- | --- | --- | --- |
+| 1 (MVP) | Movies + Theatre / Live Shows | Seat map, tiered pricing for live shows | None new - we own the seat lock |
+| 2 | Bus | Partner / aggregator API owns the seats; our hold must match the operator's hold time | Partner API latency and hold expiry |
+| 3 | Train | Per-passenger details (name, age, ID), waitlist / RAC, Tatkal rules | Legal: only IRCTC-authorised agents can book. Licence must be sorted before design |
+| 4 | Travel Packages | One trip = several bookings (transport + stay + events) | Partial failure: train confirmed but hotel fails - needs cancel / replace rules |
+
+Rule: build each vertical only when its phase starts. Until then, only keep the core generic (ADR-007).
