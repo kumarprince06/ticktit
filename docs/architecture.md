@@ -31,7 +31,7 @@ com.ticktit
 │   ├── notification  email, in-app, WhatsApp links (Kafka consumers)
 │   └── platform    outbox relay, processed events, requestId, audit log
 ├── vertical
-│   └── movie       movies, theatres, shows, show_prices, seats, seat map,
+│   └── movie       cities, theatres, screens, screen_seats, movies, shows, show_prices, show_seats, seat map,
 │                   InventoryProvider impl (hold/release/confirm/price/suggest)
 └── admin           catalog CRUD, show cancel, booking search
 ```
@@ -89,7 +89,7 @@ Rules:
 
 ### 4.3 Confirm (single transaction)
 ```sql
-UPDATE seats SET status = 'BOOKED', booking_id = :bookingId
+UPDATE show_seats SET status = 'BOOKED', booking_id = :bookingId
  WHERE show_id = :showId AND seat_no IN (:seats) AND status = 'AVAILABLE';
 -- rows updated must equal number of seats, else roll back and fail the booking
 ```
