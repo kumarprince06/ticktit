@@ -16,4 +16,9 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET}
-  expiration: 86400000
+  access-ttl: 15m      # JWT in the response body, kept in memory by the app
+  refresh-ttl: 7d      # max session per sign-in, rotation never extends it (ADR-017)
+
+logging:
+  pattern:
+    level: "%5p [%X{requestId:-}]"   # adds the request id to every log line

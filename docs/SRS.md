@@ -34,13 +34,13 @@ Version: 4.0 | Style: IEEE 830 | Author: Prince Kumar Sharma | Date: 11 Nov 2026
 
 ### FR-01 Auth
 - **FR-01.1 Register:** name (min 2 chars), email (valid, unique), phone (optional, 10-digit Indian), password (min 8, 1 upper, 1 number, 1 special). Password stored with BCrypt.
-- **FR-01.2** Email already used by an ACTIVE/BLOCKED account → 409 `EMAIL_EXISTS`: "Already registered. Please login." Otherwise `201`, and a verification link (single use, 24 h) is emailed. The account becomes ACTIVE (`email_verified_at` set) only after the link is opened. `POST /auth/resend-verification` sends a new link.
+- **FR-01.2** Email already used by an ACTIVE/BLOCKED account → 409 `EMAIL_ALREADY_EXISTS`: "Already registered. Please login." Otherwise `201`, and a verification link (single use, 24 h) is emailed. The account becomes ACTIVE (`email_verified_at` set) only after the link is opened. `POST /auth/resend-verification` sends a new link.
 - **FR-01.3 Login (email + password + email OTP):** correct email + password on an unverified account → 403 `EMAIL_NOT_VERIFIED`. On an ACTIVE account → 6-digit OTP emailed (valid 5 min, 5 tries), `202`, no tokens yet. `POST /auth/login/verify-otp {email, otp}` → access token (15 min) in the response body + refresh token (max 7 days) in an HttpOnly, Secure, SameSite=Strict cookie. OTP is required on every password login (ADR-017). In dev, emails go to Mailpit.
 - **FR-01.3a Forgot password:** `POST /auth/forgot-password {email}` → reset OTP emailed if the account exists, always `202`. `POST /auth/reset-password {email, otp, newPassword}` → password changed and every refresh token of the user revoked.
 - **FR-01.4 Google sign-in (no OTP):** `POST /auth/google {idToken}` → backend verifies the Google ID token (signature, `aud`, `iss`, `exp`, `email_verified = true`) and returns tokens directly. Creates the account on first use; links to an existing account with the same email. Fastest path for WhatsApp joiners.
 - **FR-01.5 Refresh:** `POST /auth/refresh` reads the cookie, rotates the refresh token (old one revoked); the family still expires 7 days after sign-in. Re-use of a revoked refresh token revokes the whole token family.
 - **FR-01.6 Logout:** revokes the refresh token server-side and clears the cookie.
-- **FR-01.7 Brute force:** more than `login.fail-limit` failures → 429 `TOO_MANY_ATTEMPTS` with `Retry-After`. Message never reveals whether the account exists. (Replaces the v3 account lock / 423.)
+- **FR-01.7 Brute force:** more than `login.fail-limit` failures → 429 `TOO_MANY_REQUESTS` with `Retry-After`. Message never reveals whether the account exists. (Replaces the v3 account lock / 423.)
 - **FR-01.8** All APIs except `/auth/*`, `GET /movies*`, `GET /shows*` and `GET /groups/preview/*` require a JWT. Missing/invalid → 401.
 
 ### FR-02 Movies and Shows

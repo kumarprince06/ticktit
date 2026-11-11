@@ -12,15 +12,15 @@
 
 | Method | Path | Request | Response |
 |---|---|---|---|
-| POST | `/auth/signup` | `{name, email, phone?, password}` | `201` (verification link emailed) / `409 EMAIL_EXISTS` / `400 VALIDATION_FAILED` |
+| POST | `/auth/signup` | `{name, email, phone?, password}` | `201` (verification link emailed) / `409 EMAIL_ALREADY_EXISTS` / `409 PHONE_ALREADY_EXISTS` / `400 VALIDATION_FAILED` |
 | GET | `/auth/verify-email?token=` | - | `200` (account ACTIVE) / `400 LINK_INVALID` (bad, used or expired) |
 | POST | `/auth/resend-verification` | `{email}` | `202` always / `429` |
-| POST | `/auth/login` | `{email, password}` | `202` (OTP emailed, no tokens yet) / `401 INVALID_CREDENTIALS` / `403 EMAIL_NOT_VERIFIED` / `429 TOO_MANY_ATTEMPTS` |
-| POST | `/auth/login/verify-otp` | `{email, otp}` | `200 {user, accessToken}` + refresh cookie / `401 OTP_INVALID` / `429` |
+| POST | `/auth/login` | `{email, password}` | `202` (OTP emailed, no tokens yet) / `401 INVALID_CREDENTIALS` / `403 EMAIL_NOT_VERIFIED` / `429 TOO_MANY_REQUESTS` |
+| POST | `/auth/login/verify-otp` | `{email, otp}` | `200 {user, accessToken}` + refresh cookie / `400 OTP_INVALID` / `429` |
 | POST | `/auth/login/resend-otp` | `{email}` | `202` / `429` (60 s cooldown, 5 per hour) |
 | POST | `/auth/forgot-password` | `{email}` | `202` always / `429` |
-| POST | `/auth/reset-password` | `{email, otp, newPassword}` | `204` (all sessions logged out) / `401 OTP_INVALID` |
-| POST | `/auth/google` | `{idToken}` | `200 {user, accessToken, isNewUser}` + refresh cookie (no OTP) / `401 GOOGLE_TOKEN_INVALID` |
+| POST | `/auth/reset-password` | `{email, otp, newPassword}` | `204` (all sessions logged out) / `400 OTP_INVALID` |
+| POST | `/auth/google` | `{idToken}` | `200 {user, accessToken, isNewUser}` + refresh cookie (no OTP) / `401 INVALID_GOOGLE_TOKEN` |
 | POST | `/auth/refresh` | refresh cookie | `200 {accessToken}` + rotated cookie / `401` |
 | POST | `/auth/logout` | refresh cookie | `204` (token family revoked, cookie cleared) |
 | GET | `/me` | - | `200 {id, name, email, phone, roles}` |
@@ -104,7 +104,8 @@
 
 | Status | Meaning |
 |---|---|
-| 400 | Validation failed / business rule (e.g. `GROUP_FULL`, `SEATS_LESS_THAN_MEMBERS`) |
+| 400 | Validation failed (`VALIDATION_FAILED` + per-field `errors`), unreadable request (`MALFORMED_REQUEST`), business rule (e.g. `GROUP_FULL`, `SEATS_LESS_THAN_MEMBERS`) |
+| 405 | Wrong HTTP method for the URL (`METHOD_NOT_ALLOWED`) |
 | 401 | Missing or invalid token |
 | 403 | Not allowed (e.g. `NOT_LEADER`) |
 | 404 | Not found or not visible to you |
@@ -112,3 +113,6 @@
 | 422 | Idempotency key reused with a different body |
 | 429 | Rate limited (`Retry-After` header) |
 | 503 | Dependency down (`LOCKING_UNAVAILABLE`) |
+| 500 | Unexpected error (`INTERNAL_SERVER_ERROR`). Body never contains internal details; quote the `requestId` to find the logged stack trace |
+
+All codes live in the `ErrorCode` enum (`com.ticktit.common.enums`). The code string is the contract with the frontend: never rename one that is in use.
