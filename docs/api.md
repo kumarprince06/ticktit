@@ -12,10 +12,14 @@
 
 | Method | Path | Request | Response |
 |---|---|---|---|
-| POST | `/auth/register` | `{name, email, phone?, password}` | `202 {challengeId}` (OTP emailed) / `409 EMAIL_EXISTS` |
-| POST | `/auth/login` | `{email, password}` | `200 {challengeId}` (OTP emailed, no tokens yet) / `401 INVALID_CREDENTIALS` / `429 TOO_MANY_ATTEMPTS` |
-| POST | `/auth/otp/verify` | `{challengeId, otp}` | `200 {user, accessToken}` + refresh cookie / `400 OTP_INVALID` / `429` |
-| POST | `/auth/otp/resend` | `{challengeId}` | `202` / `429` (60 s cooldown, 5 per hour) |
+| POST | `/auth/signup` | `{name, email, phone?, password}` | `201` (verification link emailed) / `409 EMAIL_EXISTS` / `400 VALIDATION_FAILED` |
+| GET | `/auth/verify-email?token=` | - | `200` (account ACTIVE) / `400 LINK_INVALID` (bad, used or expired) |
+| POST | `/auth/resend-verification` | `{email}` | `202` always / `429` |
+| POST | `/auth/login` | `{email, password}` | `202` (OTP emailed, no tokens yet) / `401 INVALID_CREDENTIALS` / `403 EMAIL_NOT_VERIFIED` / `429 TOO_MANY_ATTEMPTS` |
+| POST | `/auth/login/verify-otp` | `{email, otp}` | `200 {user, accessToken}` + refresh cookie / `401 OTP_INVALID` / `429` |
+| POST | `/auth/login/resend-otp` | `{email}` | `202` / `429` (60 s cooldown, 5 per hour) |
+| POST | `/auth/forgot-password` | `{email}` | `202` always / `429` |
+| POST | `/auth/reset-password` | `{email, otp, newPassword}` | `204` (all sessions logged out) / `401 OTP_INVALID` |
 | POST | `/auth/google` | `{idToken}` | `200 {user, accessToken, isNewUser}` + refresh cookie (no OTP) / `401 GOOGLE_TOKEN_INVALID` |
 | POST | `/auth/refresh` | refresh cookie | `200 {accessToken}` + rotated cookie / `401` |
 | POST | `/auth/logout` | refresh cookie | `204` (token family revoked, cookie cleared) |

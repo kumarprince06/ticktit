@@ -6,13 +6,13 @@ PostgreSQL 16. Full column list in STORAGE.md. This file lists the **keys, const
 - `id BIGINT GENERATED ALWAYS AS IDENTITY` primary keys; public UUIDs (`public_id`) in URLs where IDs are guessable (groups, bookings).
 - Money columns end in `_paise`, type `BIGINT`, `CHECK (... >= 0)` (ADR-009).
 - Time columns `TIMESTAMPTZ` in UTC.
-- Status columns `VARCHAR` with a `CHECK (status IN (...))`.
+- Status columns `VARCHAR` with a `CHECK (status IN (...))`, except `users.role`, `users.status` and `verification_codes.purpose`, which take their values from Java enums only.
 - Core tables (`groups`, `bookings`) reference what is booked with `item_type` + `item_id`, no foreign key; the vertical module validates the item (ADR-007). `CHECK (item_type IN ('SHOW'))` for MVP.
 
 ## ER Summary
 - User 1-N Group (as leader); Group 1-N GroupMember; Group 1-N Booking (attempts), at most 1 active and at most 1 CONFIRMED.
 - Booking 1-N BookingUnit (seat + assignee + price); Booking 1-N Payment; Payment 0-1 Refund; Booking 1-N Ticket.
-- User 1-N RefreshToken (grouped by family = one signed-in device); User 1-N LoginEvent; User 1-N UserConsent.
+- User 1-N VerificationCode (email link, login OTP, password reset); User 1-N RefreshToken (grouped by family = one signed-in device); User 1-N LoginEvent; User 1-N UserConsent (LoginEvent and UserConsent come in a later migration).
 - City 1-N Theatre 1-N Screen 1-N ScreenSeat (layout).
 - Movie 1-N Show; Screen 1-N Show; Show 1-N ShowPrice (per category); Show 1-N ShowSeat (one per active ScreenSeat).
 
@@ -23,16 +23,18 @@ PostgreSQL 16. Full column list in STORAGE.md. This file lists the **keys, const
 CREATE UNIQUE INDEX ux_users_email ON users (lower(email));
 CREATE UNIQUE INDEX ux_users_phone ON users (phone) WHERE phone IS NOT NULL;
 CREATE UNIQUE INDEX ux_users_google ON users (google_sub) WHERE google_sub IS NOT NULL;
-ALTER TABLE users ADD CONSTRAINT ck_user_status CHECK (status IN ('PENDING_VERIFICATION','ACTIVE','BLOCKED','DELETED'));
+-- status: no CHECK on purpose; the Java UserStatus enum is the only list. ACTIVE and DELETED are used by the checks below, never rename them
 -- Every live account has a way to sign in
 ALTER TABLE users ADD CONSTRAINT ck_user_login_method
   CHECK (status = 'DELETED' OR password_hash IS NOT NULL OR google_sub IS NOT NULL);
--- ACTIVE means the email is proven (email OTP or Google)
+-- ACTIVE means the email is proven (verification link or Google)
 ALTER TABLE users ADD CONSTRAINT ck_user_active_verified
   CHECK (status <> 'ACTIVE' OR email_verified_at IS NOT NULL);
 ALTER TABLE users ADD CONSTRAINT ck_user_phone CHECK (phone ~ '^\+91[6-9][0-9]{9}$');
+-- role: no CHECK on purpose; the Java Role enum is the only list, so adding a role needs no migration
+-- verification_codes.purpose: no CHECK on purpose; the Java CodePurpose enum is the only list
 CREATE UNIQUE INDEX ux_refresh_hash ON refresh_tokens (token_hash);
-ALTER TABLE refresh_tokens ADD CONSTRAINT ck_refresh_cap CHECK (expires_at <= family_expires_at);
+-- A token's lifetime is its family's: family_expires_at = sign-in + 7 days, never extended by rotation
 
 -- Catalog
 CREATE UNIQUE INDEX ux_city_slug ON cities (slug);
@@ -94,7 +96,7 @@ ALTER TABLE processed_events ADD CONSTRAINT pk_processed PRIMARY KEY (consumer, 
 | Group by code (join, preview) | `ux_groups_code` |
 | Login by email / Google | `ux_users_email`, `ux_users_google` |
 | Refresh token lookup | `ux_refresh_hash` |
-| My signed-in devices | `refresh_tokens (user_id) WHERE revoked_at IS NULL` |
+| My signed-in devices | `refresh_tokens (user_id) WHERE used_at IS NULL AND family_expires_at > now()` |
 | Login history / abuse check | `login_events (user_id, created_at)`, `login_events (ip, created_at)` |
 | Cleanup unverified users | `users (created_at) WHERE status = 'PENDING_VERIFICATION'` |
 | Seat map for a show | `ux_show_seat (show_id, seat_no)` |
