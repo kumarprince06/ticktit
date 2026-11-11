@@ -31,7 +31,7 @@ Later columns on `users` (added with their feature): `home_city_id`, `last_login
 
 **A. Sign up with email + password**
 1. `POST /auth/signup {name, email, phone?, password}`.
-2. If an `ACTIVE`/`BLOCKED` user has this email → `409 EMAIL_EXISTS`.
+2. If an `ACTIVE`/`BLOCKED` user has this email → `409 EMAIL_ALREADY_EXISTS`.
    If a `PENDING_VERIFICATION` user has it → overwrite that row (name, password_hash). This stops someone "squatting" an email they do not own.
 3. Insert/update `users`: status `PENDING_VERIFICATION`, `email_verified_at = null`, `password_hash = BCrypt(password)`.
 4. `verification_codes`: SHA-256 of a 32-byte random token, purpose `EMAIL_VERIFY`, expires in 24 h. Email the link `/auth/verify-email?token=…`.

@@ -18,7 +18,7 @@ Every scenario must become an automated test (TEST-PLAN.md). Amounts assume ₹2
 | S7 | User pays, internet fails, retries with same key | Same payment returned, charged once |
 | S8 | Leader removes a member who already paid | Member refunded, seat unassigned |
 | S9 | Group full, 9th member tries | 400 `GROUP_FULL` |
-| S10 | Wrong password 6 times | 429 `TOO_MANY_ATTEMPTS` + Retry-After; message does not reveal if the account exists |
+| S10 | Wrong password 6 times | 429 `TOO_MANY_REQUESTS` + Retry-After; message does not reveal if the account exists |
 | S11 | Payment with `failure@mock` | Payment FAILED, booking still PAYMENT_PENDING, retry with new key allowed |
 | S12 | Theatre cancels the show | All bookings CANCELLED, 100% refund incl. fee, notifications |
 
