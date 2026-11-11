@@ -13,6 +13,8 @@ public enum ErrorCode {
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Please sign in to continue"),
     FORBIDDEN(HttpStatus.FORBIDDEN, "You don't have permission to do this"),
     NOT_FOUND(HttpStatus.NOT_FOUND, "We couldn't find what you were looking for"),
+    MALFORMED_REQUEST(HttpStatus.BAD_REQUEST, "The request could not be read. Please check it and try again"),
+    METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "This action is not supported here"),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Something went wrong on our side. Please try again in a moment"),
     TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "Too many attempts. Please wait a few minutes and try again"),
 

@@ -4,10 +4,19 @@ import com.ticktit.common.enums.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,6 +32,18 @@ public class GlobalExceptionHandler {
         return createProblemDetails(ex.getErrorCode());
     }
 
+    // Missing, bad or expired JWT (forwarded here from SecurityConfig)
+    @ExceptionHandler(AuthenticationException.class)
+    public ProblemDetail handleAuthentication(AuthenticationException ex) {
+        return createProblemDetails(ErrorCode.UNAUTHORIZED);
+    }
+
+    // Valid JWT but wrong role (URL rule in SecurityConfig, or @PreAuthorize on a method)
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+        return createProblemDetails(ErrorCode.FORBIDDEN);
+    }
+
     // 2. @Valid failed on a request body
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail handleValidationException(MethodArgumentNotValidException ex) {
@@ -35,6 +56,25 @@ public class GlobalExceptionHandler {
         ProblemDetail problemDetail = createProblemDetails(ErrorCode.VALIDATION_FAILED);
         problemDetail.setProperty("errors", errors);
         return problemDetail;
+    }
+
+    // Client mistakes Spring itself detects. Without these the catch-all below would turn them into 500s.
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    public ProblemDetail handleNoResource(Exception ex) {
+        return createProblemDetails(ErrorCode.NOT_FOUND);                 // unknown URL
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ProblemDetail handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        return createProblemDetails(ErrorCode.METHOD_NOT_ALLOWED);        // e.g. GET on a POST-only URL
+    }
+
+    @ExceptionHandler({HttpMessageNotReadableException.class,            // broken JSON body
+            MissingServletRequestParameterException.class,               // required ?param missing
+            MethodArgumentTypeMismatchException.class,                   // ?id=abc where a number is expected
+            HttpMediaTypeNotSupportedException.class})                   // body sent without Content-Type: application/json
+    public ProblemDetail handleMalformedRequest(Exception ex) {
+        return createProblemDetails(ErrorCode.MALFORMED_REQUEST);
     }
 
     // 3. Anything we did not expect: NullPointerException, bug, db down etc.

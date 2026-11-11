@@ -104,7 +104,8 @@
 
 | Status | Meaning |
 |---|---|
-| 400 | Validation failed / business rule (e.g. `GROUP_FULL`, `SEATS_LESS_THAN_MEMBERS`) |
+| 400 | Validation failed (`VALIDATION_FAILED` + per-field `errors`), unreadable request (`MALFORMED_REQUEST`), business rule (e.g. `GROUP_FULL`, `SEATS_LESS_THAN_MEMBERS`) |
+| 405 | Wrong HTTP method for the URL (`METHOD_NOT_ALLOWED`) |
 | 401 | Missing or invalid token |
 | 403 | Not allowed (e.g. `NOT_LEADER`) |
 | 404 | Not found or not visible to you |

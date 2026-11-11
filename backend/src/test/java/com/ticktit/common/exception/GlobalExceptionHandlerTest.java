@@ -54,4 +54,25 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.errors.email").exists())
                 .andExpect(jsonPath("$.errors.password").exists());
     }
+
+    @Test
+    void unknownUrlIs404Not500() throws Exception {
+        mvc.perform(get("/no-such-url"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    }
+
+    @Test
+    void brokenJsonIs400() throws Exception {
+        mvc.perform(post("/valid").contentType(MediaType.APPLICATION_JSON).content("{not json"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+    }
+
+    @Test
+    void wrongMethodIs405() throws Exception {
+        mvc.perform(post("/boom"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"));
+    }
 }
