@@ -1,6 +1,6 @@
 # ADR-005: Use JWT for Authentication
 
-Status: Accepted | Date: 2026-11-07
+Status: Superseded by ADR-012 (2026-11-11) | Date: 2026-11-07
 
 ## Context
 Frontend (React) and Backend (Spring Boot) are separate. Need stateless auth that works for web + mobile later.
