@@ -6,7 +6,7 @@ PostgreSQL 16. Full column list in STORAGE.md. This file lists the **keys, const
 - `id BIGINT GENERATED ALWAYS AS IDENTITY` primary keys; public UUIDs (`public_id`) in URLs where IDs are guessable (groups, bookings).
 - Money columns end in `_paise`, type `BIGINT`, `CHECK (... >= 0)` (ADR-009).
 - Time columns `TIMESTAMPTZ` in UTC.
-- Status columns `VARCHAR` with a `CHECK (status IN (...))`.
+- Status columns `VARCHAR` with a `CHECK (status IN (...))`, except `users.role`, `users.status` and `verification_codes.purpose`, which take their values from Java enums only.
 - Core tables (`groups`, `bookings`) reference what is booked with `item_type` + `item_id`, no foreign key; the vertical module validates the item (ADR-007). `CHECK (item_type IN ('SHOW'))` for MVP.
 
 ## ER Summary
@@ -23,7 +23,7 @@ PostgreSQL 16. Full column list in STORAGE.md. This file lists the **keys, const
 CREATE UNIQUE INDEX ux_users_email ON users (lower(email));
 CREATE UNIQUE INDEX ux_users_phone ON users (phone) WHERE phone IS NOT NULL;
 CREATE UNIQUE INDEX ux_users_google ON users (google_sub) WHERE google_sub IS NOT NULL;
-ALTER TABLE users ADD CONSTRAINT ck_user_status CHECK (status IN ('PENDING_VERIFICATION','ACTIVE','BLOCKED','DELETED'));
+-- status: no CHECK on purpose; the Java UserStatus enum is the only list. ACTIVE and DELETED are used by the checks below, never rename them
 -- Every live account has a way to sign in
 ALTER TABLE users ADD CONSTRAINT ck_user_login_method
   CHECK (status = 'DELETED' OR password_hash IS NOT NULL OR google_sub IS NOT NULL);
@@ -31,9 +31,8 @@ ALTER TABLE users ADD CONSTRAINT ck_user_login_method
 ALTER TABLE users ADD CONSTRAINT ck_user_active_verified
   CHECK (status <> 'ACTIVE' OR email_verified_at IS NOT NULL);
 ALTER TABLE users ADD CONSTRAINT ck_user_phone CHECK (phone ~ '^\+91[6-9][0-9]{9}$');
-ALTER TABLE users ADD CONSTRAINT ck_user_role CHECK (role IN ('USER','ADMIN','SCANNER'));
-ALTER TABLE verification_codes ADD CONSTRAINT ck_code_purpose
-  CHECK (purpose IN ('EMAIL_VERIFY','LOGIN_OTP','PASSWORD_RESET'));
+-- role: no CHECK on purpose; the Java Role enum is the only list, so adding a role needs no migration
+-- verification_codes.purpose: no CHECK on purpose; the Java CodePurpose enum is the only list
 CREATE UNIQUE INDEX ux_refresh_hash ON refresh_tokens (token_hash);
 -- A token's lifetime is its family's: family_expires_at = sign-in + 7 days, never extended by rotation
 

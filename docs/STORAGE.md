@@ -17,7 +17,7 @@ All tables also have `id BIGINT` identity PK and `created_at TIMESTAMPTZ DEFAULT
 ### Identity (auth) - ADR-017
 | Table | Columns |
 |---|---|
-| users (V1) | public_id UUID (the only id the API and JWT expose), name, email (stored lower-case), email_verified_at, phone (optional, `+91XXXXXXXXXX`, not used for login), password_hash (BCrypt, null for Google-only users), google_sub (Google's stable user ID, null if never used Google), avatar_url (from Google), role USER/ADMIN/SCANNER, status PENDING_VERIFICATION/ACTIVE/BLOCKED/DELETED, updated_at |
+| users (V1) | public_id UUID (the only id the API and JWT expose), name, email (stored lower-case), email_verified_at, phone (optional, `+91XXXXXXXXXX`, not used for login), password_hash (BCrypt, null for Google-only users), google_sub (Google's stable user ID, null if never used Google), avatar_url (from Google), role (from the Java Role enum, no DB check: USER/ADMIN/SCANNER today), status (from the Java UserStatus enum, no DB check: PENDING_VERIFICATION/ACTIVE/BLOCKED/DELETED), updated_at |
 | verification_codes (V1) | user_id, code_hash (SHA-256 of the OTP or link token), purpose EMAIL_VERIFY/LOGIN_OTP/PASSWORD_RESET, attempts, expires_at, used_at |
 | refresh_tokens (V1) | user_id, family_id UUID, token_hash (SHA-256), family_expires_at (sign-in + 7 days, never extended), used_at (set on rotation) |
 | login_events (later) | user_id (null if the email is unknown), email_hash (SHA-256, for rate-limit analysis without storing unknown emails), method PASSWORD/EMAIL_OTP/GOOGLE, result SUCCESS/BAD_PASSWORD/BAD_OTP/OTP_EXPIRED/RATE_LIMITED/GOOGLE_INVALID/BLOCKED, ip, user_agent. Kept 90 days |
