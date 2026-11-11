@@ -4,7 +4,7 @@
 .DS_Store
 backend/target/
 backend/*.jar
-backend/.idea/
+.idea/
 backend/*.iml
 frontend/node_modules/
 frontend/dist/

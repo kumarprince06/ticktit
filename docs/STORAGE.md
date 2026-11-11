@@ -14,33 +14,41 @@ QR images are **not** stored: they are rendered on the fly from the signed token
 
 All tables also have `id BIGINT` identity PK and `created_at TIMESTAMPTZ DEFAULT now()`. Constraints: db-design.md.
 
-### Identity (core.auth) - ADR-017
+### Identity (auth) - ADR-017
 | Table | Columns |
 |---|---|
-| users | public_id UUID, name, email (stored lower-case), email_verified_at, phone (optional, `+91XXXXXXXXXX`, not used for login), password_hash (BCrypt cost 12, null for Google-only users), google_sub (Google's stable user ID, null if never used Google), avatar_url (from Google), home_city_id, roles TEXT[] (USER/ADMIN/SCANNER), status PENDING_VERIFICATION/ACTIVE/BLOCKED/DELETED, last_login_at, deleted_at, updated_at |
-| refresh_tokens | user_id, family_id UUID, token_hash (SHA-256), family_expires_at (sign-in + 7 days, never extended), expires_at, revoked_at, replaced_by_id, user_agent, ip, last_used_at |
-| login_events | user_id (null if the email is unknown), email_hash (SHA-256, for rate-limit analysis without storing unknown emails), method PASSWORD/EMAIL_OTP/GOOGLE, result SUCCESS/BAD_PASSWORD/BAD_OTP/OTP_EXPIRED/RATE_LIMITED/GOOGLE_INVALID/BLOCKED, ip, user_agent. Kept 90 days |
-| user_consents | user_id, purpose TERMS/PRIVACY/MARKETING_EMAIL/MARKETING_WHATSAPP, granted BOOLEAN, policy_version, ip. Append-only: a new row on every change, the latest row wins (DPDP Act proof of consent) |
+| users (V1) | public_id UUID (the only id the API and JWT expose), name, email (stored lower-case), email_verified_at, phone (optional, `+91XXXXXXXXXX`, not used for login), password_hash (BCrypt, null for Google-only users), google_sub (Google's stable user ID, null if never used Google), avatar_url (from Google), role USER/ADMIN/SCANNER, status PENDING_VERIFICATION/ACTIVE/BLOCKED/DELETED, updated_at |
+| verification_codes (V1) | user_id, code_hash (SHA-256 of the OTP or link token), purpose EMAIL_VERIFY/LOGIN_OTP/PASSWORD_RESET, attempts, expires_at, used_at |
+| refresh_tokens (V1) | user_id, family_id UUID, token_hash (SHA-256), family_expires_at (sign-in + 7 days, never extended), used_at (set on rotation) |
+| login_events (later) | user_id (null if the email is unknown), email_hash (SHA-256, for rate-limit analysis without storing unknown emails), method PASSWORD/EMAIL_OTP/GOOGLE, result SUCCESS/BAD_PASSWORD/BAD_OTP/OTP_EXPIRED/RATE_LIMITED/GOOGLE_INVALID/BLOCKED, ip, user_agent. Kept 90 days |
+| user_consents (later) | user_id, purpose TERMS/PRIVACY/MARKETING_EMAIL/MARKETING_WHATSAPP, granted BOOLEAN, policy_version, ip. Append-only: a new row on every change, the latest row wins (DPDP Act proof of consent) |
 
-**Not in Postgres:** OTPs and login challenges live in Redis only (§3). No OTP is ever written to a table or a log.
+Later columns on `users` (added with their feature): `home_city_id`, `last_login_at`, `deleted_at`.
+
+**Codes:** OTPs and link tokens are stored only as SHA-256 hashes in `verification_codes`. No raw code is ever written to a table or a log. A daily job deletes expired codes and expired refresh families.
 
 #### Signup and sign-in, step by step
 
-**A. Register with email + password**
-1. `POST /auth/register {name, email, phone?, password}`.
+**A. Sign up with email + password**
+1. `POST /auth/signup {name, email, phone?, password}`.
 2. If an `ACTIVE`/`BLOCKED` user has this email → `409 EMAIL_EXISTS`.
    If a `PENDING_VERIFICATION` user has it → overwrite that row (name, password_hash). This stops someone "squatting" an email they do not own.
-3. Insert/update `users`: status `PENDING_VERIFICATION`, `email_verified_at = null`, `password_hash = BCrypt(password)`. Insert `user_consents` rows for TERMS + PRIVACY (+ marketing if ticked).
-4. Redis: `otp:{challengeId}` = {SHA-256(otp), userId, purpose REGISTER, attempts 0}, TTL 300 s. Email the OTP.
-5. `POST /auth/otp/verify {challengeId, otp}` → status `ACTIVE`, `email_verified_at = now()`, create refresh family, `login_events` SUCCESS, return tokens.
-6. Scheduler deletes `PENDING_VERIFICATION` users older than 24 h.
+3. Insert/update `users`: status `PENDING_VERIFICATION`, `email_verified_at = null`, `password_hash = BCrypt(password)`.
+4. `verification_codes`: SHA-256 of a 32-byte random token, purpose `EMAIL_VERIFY`, expires in 24 h. Email the link `/auth/verify-email?token=…`.
+5. `GET /auth/verify-email?token=…` → status `ACTIVE`, `email_verified_at = now()`, code `used_at = now()`. No tokens: the user logs in next.
+6. `POST /auth/resend-verification {email}` → older link codes marked used, new link emailed. Always `202`.
+7. Scheduler deletes `PENDING_VERIFICATION` users older than 7 days.
 
 **B. Login with email + password**
 1. `POST /auth/login {email, password}` → check rate limits → load user by `lower(email)`.
-2. Unknown email or wrong password → BCrypt still runs (same timing), `login_events` BAD_PASSWORD, `401 INVALID_CREDENTIALS`.
-   `BLOCKED` → same 401 (do not reveal). `PENDING_VERIFICATION` → treat as a register retry (new OTP).
-3. Correct → Redis `otp:{challengeId}` (purpose LOGIN), email OTP, `200 {challengeId}`.
-4. `POST /auth/otp/verify` → 5 wrong tries kills the challenge → success: new refresh family (`family_expires_at = now() + 7 days`), `last_login_at`, `login_events` SUCCESS, tokens.
+2. Unknown email or wrong password → BCrypt still runs (same timing), `401 INVALID_CREDENTIALS`. `BLOCKED` → same 401 (do not reveal).
+3. Correct password but `PENDING_VERIFICATION` → `403 EMAIL_NOT_VERIFIED` (shown only after a correct password, so it reveals nothing to a guesser).
+4. Correct and `ACTIVE` → older `LOGIN_OTP` codes marked used, new 6-digit OTP hashed into `verification_codes` (5 min), emailed, `202`.
+5. `POST /auth/login/verify-otp {email, otp}` → 5 wrong tries kills the code → success: new refresh family (`family_expires_at = now() + 7 days`), tokens.
+
+**B2. Forgot password**
+1. `POST /auth/forgot-password {email}` → `PASSWORD_RESET` OTP emailed if the account exists. Always `202`.
+2. `POST /auth/reset-password {email, otp, newPassword}` → new `password_hash`, all of the user's refresh tokens deleted (logged out everywhere).
 
 **C. Google sign-in (no OTP)**
 1. `POST /auth/google {idToken}` → verify signature, `aud`, `iss`, `exp`, `email_verified = true`.
@@ -50,8 +58,8 @@ All tables also have `id BIGINT` identity PK and `created_at TIMESTAMPTZ DEFAULT
 5. A Google-only user can add a password later through "Set password" (email OTP required).
 
 **D. Refresh / logout / delete account**
-- Refresh: look up `token_hash` → rotate (new row, old `replaced_by_id`) → reject if `family_expires_at` passed. Reuse of a replaced token → revoke the whole family.
-- Logout: `revoked_at` on the family. "Log out of all devices": revoke every family of the user.
+- Refresh: look up `token_hash` (`FOR UPDATE`) → reject if `family_expires_at` passed → set old `used_at`, insert a new row in the same family. Reuse of a token whose `used_at` is set → delete the whole family.
+- Logout: delete the family's rows. "Log out of all devices": delete every refresh token of the user.
 - Delete account (PRIVACY.md): status `DELETED`, `deleted_at`, name → "Deleted user", email → `deleted+{publicId}@ticktit.invalid`, phone/google_sub/password_hash/avatar → null, all families revoked. Bookings, payments and invoices are kept (tax law: 8 years) but no longer point to a real person.
 
 **Sample rows**
@@ -63,11 +71,12 @@ users
  3  | 91d2...77    | Sneha Roy    | sneha@example.com    | null                | null          | $2a$12$Lp...  | null             | PENDING_VERIFICATION
 
 refresh_tokens
- user_id | family_id | token_hash | family_expires_at   | expires_at          | revoked_at | user_agent         | ip
- 1       | 5f0e...   | 9a7c...    | 2026-11-18 10:02:11 | 2026-11-18 10:02:11 | null       | Chrome 131 Android | 103.21.x.x
+ user_id | family_id | token_hash | family_expires_at   | used_at
+ 1       | 5f0e...   | 1b2d...    | 2026-11-18 10:02:11 | 2026-11-11 10:17:30   (rotated)
+ 1       | 5f0e...   | 9a7c...    | 2026-11-18 10:02:11 | null                  (current)
 ```
 
-### Catalog (vertical.movie)
+### Catalog (movie)
 Seat **layout** belongs to a screen (drawn once). Seat **status** belongs to a show (copied from the layout when the show is published).
 
 | Table | Columns |
@@ -101,7 +110,7 @@ show_seats    show 101 | H7 | PRIME | AVAILABLE
 | bookings | public_id, booking_code (8 chars, e.g. TK7Q2M9A, shown on tickets), group_id, item_type, item_id, status LOCKED/PAYMENT_PENDING/CONFIRMED/RELEASED/FAILED/CANCELLED, mode SPLIT/PAY_FOR_ALL (null until payment starts), total_paise, paid_paise, lock_expires_at, payment_deadline, price_snapshot JSONB, contact_email, contact_phone (copied from the leader at confirm), invoice_no (TT/2026-27/000123, set at confirm), version, confirmed_at |
 | booking_units | booking_id, unit_ref (seat no), category, assignee_user_id, ticket_price_paise (GST-inclusive, e.g. 25000), ticket_base_paise (21186), ticket_gst_paise (3814), ticket_gst_rate_bp (1800 = 18%; 1200 if ticket ≤ ₹100), fee_paise (2000), fee_gst_paise (360) |
 
-### Money (core.payment, core.refund)
+### Money (payment, refund)
 | Table | Columns |
 |---|---|
 | payments | booking_id, payer_user_id, beneficiary_user_id (differs for Cover / Pay For All), amount_paise, idempotency_key, gateway, gateway_order_id, gateway_txn_id, method UPI/CARD/NETBANKING, status PENDING/SUCCESS/FAILED, failure_reason, succeeded_at |
@@ -111,7 +120,7 @@ show_seats    show 101 | H7 | PRIME | AVAILABLE
 | idempotency_keys | user_id, idem_key, endpoint, request_hash, response_status, response_body JSONB, expires_at |
 | ious (v1.1) | booking_id, debtor_user_id, creditor_user_id, amount_paise, settled_at |
 
-### Tickets (core.ticket)
+### Tickets (ticket)
 | Table | Columns |
 |---|---|
 | tickets | booking_id, kind GROUP/SEAT, unit_ref (null for GROUP), holder_user_id, qr_token_id UUID, checked_in_at, checked_in_by, revoked_at |
@@ -155,11 +164,10 @@ Travel bookings also add to `bookings`: `supplier` (IRCTC, RedBus operator...), 
 |---|---|---|---|
 | `lock:show:{showId}:seat:{seatNo}` | groupId | 300 s; extended to payment window + 60 s | Seat lock, e.g. `lock:show:101:seat:A1 = 12` |
 | `seats:show:{showId}` | seat map JSON | 60 s | Cache; deleted on lock/unlock/confirm/cancel |
-| `otp:{challengeId}` | OTP hash + user id + attempt count | 300 s | Email OTP (login / register) |
-| `otp:cooldown:{email}` | 1 | 60 s | Resend cooldown |
-| `rl:login:acct:{email}` / `rl:login:ip:{ip}` | counter | 15 min | Login rate limit |
+| `rl:otp:cooldown:{email}` | 1 | 60 s | Resend cooldown (OTP and verification link) |
+| `rl:otp:hour:{email}` | counter | 1 h | Max 5 emails per hour |
+| `rl:login:email:{email}` / `rl:login:ip:{ip}` | counter | 15 min / 1 min | Login rate limit (10 per email, 20 per IP) |
 | `rl:remind:{groupId}:{userId}` | 1 | 60 s | Remind limit |
-| `refresh:revoked:{familyId}` | 1 | 7 days | Revoked refresh family |
 
 ## 4. File Storage
 

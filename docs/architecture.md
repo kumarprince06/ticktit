@@ -21,20 +21,25 @@ flowchart LR
 
 ```
 com.ticktit
-├── core            (vertical-agnostic, never imports a vertical)
-│   ├── auth        users, JWT, refresh tokens, email OTP, Google sign-in, rate limits
-│   ├── group       groups, members, invite codes, preview
-│   ├── booking     bookings, booking_units, state machine, scheduler
-│   ├── payment     PaymentGateway interface, idempotency, webhooks, reconciliation
-│   ├── refund      refunds, retry, reconciliation
-│   ├── ticket      QR tokens, check-in, PDF
-│   ├── notification  email, in-app, WhatsApp links (Kafka consumers)
-│   └── platform    outbox relay, processed events, requestId, audit log
-├── vertical
-│   └── movie       cities, theatres, screens, screen_seats, movies, shows, show_prices, show_seats, seat map,
+│   core modules (vertical-agnostic, never import a vertical)
+├── auth            users, JWT, refresh tokens, email OTP, Google sign-in, rate limits
+├── group           groups, members, invite codes, preview
+├── booking         bookings, booking_units, state machine, scheduler
+├── payment         PaymentGateway interface, idempotency, webhooks, reconciliation
+├── refund          refunds, retry, reconciliation
+├── ticket          QR tokens, check-in, PDF
+├── notification    email, in-app, WhatsApp links (Kafka consumers)
+├── platform        outbox relay, processed events, requestId, audit log
+│   vertical modules (one per vertical, may import core modules)
+├── movie           cities, theatres, screens, screen_seats, movies, shows, show_prices, show_seats, seat map,
 │                   InventoryProvider impl (hold/release/confirm/price/suggest)
-└── admin           catalog CRUD, show cancel, booking search
+│   other
+├── admin           catalog CRUD, show cancel, booking search
+├── config          SecurityConfig and other app-wide beans
+└── common          ApiException, GlobalExceptionHandler
 ```
+
+Packages are flat (`com.ticktit.auth`, not `com.ticktit.core.auth`). The core/vertical rule is enforced by a Spring Modulith test, not by folders: core modules must not import `movie` or any later vertical.
 
 The core calls a vertical only through this interface:
 
@@ -119,11 +124,10 @@ Every event: `eventId` (UUID), `occurredAt`, `requestId`, `payload`. Consumers r
 |---|---|---|---|
 | `lock:show:{showId}:seat:{seatNo}` | groupId | 300 s, extended to window + 60 s | Seat lock |
 | `seats:show:{showId}` | seat map JSON | 60 s | Cache, evicted on lock/unlock/confirm |
-| `otp:{challengeId}` | hash of OTP + user id + attempts | 300 s | Email OTP (login / register) |
-| `otp:cooldown:{email}` | 1 | 60 s | Resend cooldown |
-| `rl:login:acct:{email}` / `rl:login:ip:{ip}` | counter | 15 min | Login rate limit |
+| `rl:otp:cooldown:{email}` | 1 | 60 s | Resend cooldown (OTP and verification link) |
+| `rl:otp:hour:{email}` | counter | 1 h | Max 5 emails per hour |
+| `rl:login:email:{email}` / `rl:login:ip:{ip}` | counter | 15 min / 1 min | Login rate limit (10 per email, 20 per IP) |
 | `rl:remind:{groupId}:{userId}` | 1 | 60 s | Remind limit |
-| `refresh:revoked:{familyId}` | 1 | 7 days | Refresh token family revoked |
 
 ## 7. Concurrency Control (three layers)
 

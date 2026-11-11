@@ -15,7 +15,7 @@ Method: list what an attacker wants, how they would try, and what stops them. Re
 | T9 | Stolen refresh token | XSS or device theft | HttpOnly cookie, rotation with reuse detection revokes the family, 15-min access tokens |
 | T10 | XSS | Script in group name / user name | React escaping, input validation (length, charset), CSP header |
 | T11 | Forged / reused ticket | Make or share a QR | Signed tokens, one-time check-in, rotating QR in v1.1 (ADR-016) |
-| T12 | Spam OTP emails (cost/harassment) | Loop on `/auth/register` or `/auth/otp/resend` | OTP sent only after a correct password on login; per-email and per-IP limits; 60 s cooldown; CAPTCHA if abused |
+| T12 | Spam OTP emails (cost/harassment) | Loop on `/auth/signup`, `/auth/resend-verification`, `/auth/login/resend-otp` or `/auth/forgot-password` | OTP sent only after a correct password on login; per-email and per-IP limits; 60 s cooldown; CAPTCHA if abused |
 | T13 | Leak personal data in logs | Phones, emails, tokens in logs | Masking filter; never log OTPs, tokens, passwords |
 | T14 | Secrets in git | Gateway keys, JWT/QR secrets | `.env` only, `.env.example` without values, secret scanning in CI |
 | T15 | Dependency vulnerabilities | Old library CVE | OWASP Dependency-Check in CI, Dependabot |
