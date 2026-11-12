@@ -13,6 +13,19 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  mail:
+    host: ${MAIL_HOST:localhost}     # Mailpit in dev; a real provider (SES, Brevo...) in prod
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+  threads:
+    virtual:
+      enabled: true                  # @Async email sending and slow I/O use cheap virtual threads
+
+app:
+  base-url: ${APP_BASE_URL:http://localhost:5173}   # frontend URL, used to build links in emails
+  mail:
+    from: ${MAIL_FROM:Ticktit <no-reply@ticktit.local>}
 
 jwt:
   secret: ${JWT_SECRET}
