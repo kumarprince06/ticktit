@@ -47,8 +47,14 @@ public final class AuthDtos {
             @NotBlank @Pattern(regexp = PASSWORD_RULE, message = PASSWORD_MESSAGE) String newPassword) {
     }
 
-    /** Sent after a successful sign-in or refresh. The refresh token goes in an HttpOnly cookie, never here. */
-    public record AuthResponse(String accessToken, UserSummary user) {
+    public record GoogleRequest(@NotBlank @Size(max = 4096) String idToken) {
+    }
+
+    /**
+     * Sent after a successful sign-in or refresh. The refresh token goes in an HttpOnly cookie, never here.
+     * isNewUser is only set by Google sign-in (the app may show a welcome screen); null elsewhere.
+     */
+    public record AuthResponse(String accessToken, UserSummary user, Boolean isNewUser) {
     }
 
     public record UserSummary(UUID id, String name, String email, String role) {

@@ -2,6 +2,7 @@ package com.ticktit.auth.controller;
 
 import com.ticktit.auth.dto.AuthDtos.AuthResponse;
 import com.ticktit.auth.dto.AuthDtos.EmailRequest;
+import com.ticktit.auth.dto.AuthDtos.GoogleRequest;
 import com.ticktit.auth.dto.AuthDtos.LoginRequest;
 import com.ticktit.auth.dto.AuthDtos.ResetPasswordRequest;
 import com.ticktit.auth.dto.AuthDtos.SignupRequest;
@@ -9,6 +10,7 @@ import com.ticktit.auth.dto.AuthDtos.UserSummary;
 import com.ticktit.auth.dto.AuthDtos.VerifyOtpRequest;
 import com.ticktit.auth.entity.User;
 import com.ticktit.auth.service.AuthService;
+import com.ticktit.auth.service.GoogleAuthService;
 import com.ticktit.auth.service.TokenService;
 import com.ticktit.auth.service.TokenService.TokenPair;
 import com.ticktit.common.enums.ErrorCode;
@@ -43,6 +45,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final TokenService tokenService;
+    private final GoogleAuthService googleAuthService;
 
     // ---------------------------------------------------------------- sign-up
 
@@ -74,7 +77,13 @@ public class AuthController {
     @PostMapping("/login/verify-otp")
     public ResponseEntity<AuthResponse> verifyLoginOtp(@Valid @RequestBody VerifyOtpRequest request) {
         AuthService.AuthResult result = authService.verifyLoginOtp(request.email(), request.otp());
-        return signedIn(result.user(), result.tokens());
+        return signedIn(result.user(), result.tokens(), null);
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<AuthResponse> google(@Valid @RequestBody GoogleRequest request) {
+        GoogleAuthService.GoogleResult google = googleAuthService.signIn(request.idToken());
+        return signedIn(google.result().user(), google.result().tokens(), google.isNewUser());
     }
 
     @PostMapping("/login/resend-otp")
@@ -93,7 +102,7 @@ public class AuthController {
         TokenPair tokens = tokenService.refresh(refreshToken);
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie(tokens.refreshToken(), tokens.refreshExpiresAt()).toString())
-                .body(new AuthResponse(tokens.accessToken(), null));
+                .body(new AuthResponse(tokens.accessToken(), null, null));
     }
 
     @PostMapping("/logout")
@@ -122,11 +131,11 @@ public class AuthController {
 
     // ---------------------------------------------------------------- helpers
 
-    private ResponseEntity<AuthResponse> signedIn(User user, TokenPair tokens) {
+    private ResponseEntity<AuthResponse> signedIn(User user, TokenPair tokens, Boolean isNewUser) {
         UserSummary summary = new UserSummary(user.getPublicId(), user.getName(), user.getEmail(), user.getRole().name());
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie(tokens.refreshToken(), tokens.refreshExpiresAt()).toString())
-                .body(new AuthResponse(tokens.accessToken(), summary));
+                .body(new AuthResponse(tokens.accessToken(), summary, isNewUser));
     }
 
     private static ResponseCookie refreshCookie(String value, Instant expiresAt) {
