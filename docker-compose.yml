@@ -28,5 +28,11 @@ services:
       CLUSTER_ID: ticktit-cluster
     ports:
       - "9092:9092"
+  mailpit:
+    image: axllent/mailpit:v1.27
+    container_name: ticktit-mailpit
+    ports:
+      - "1025:1025"   # SMTP: the app sends here
+      - "8025:8025"   # web UI: read the emails at http://localhost:8025
 volumes:
   ticktit_pgdata:
