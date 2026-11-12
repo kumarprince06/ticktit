@@ -22,6 +22,16 @@ public final class Secrets {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
+    /** 6-digit one-time code, e.g. "048213". */
+    public static String randomOtp() {
+        return String.format("%06d", RANDOM.nextInt(1_000_000));
+    }
+
+    /** Compares two hashes in constant time, so response timing reveals nothing about how close a guess was. */
+    public static boolean hashesEqual(String a, String b) {
+        return MessageDigest.isEqual(a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8));
+    }
+
     /** SHA-256 as 64 hex chars. Only this is stored, never the raw value. */
     public static String sha256Hex(String value) {
         try {
