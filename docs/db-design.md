@@ -21,7 +21,7 @@ PostgreSQL 16. Full column list in STORAGE.md. This file lists the **keys, const
 ```sql
 -- Identity (ADR-017)
 CREATE UNIQUE INDEX ux_users_email ON users (lower(email));
-CREATE UNIQUE INDEX ux_users_phone ON users (phone) WHERE phone IS NOT NULL;
+-- phone is optional contact info only (no phone login), so it is NOT unique
 CREATE UNIQUE INDEX ux_users_google ON users (google_sub) WHERE google_sub IS NOT NULL;
 -- status: no CHECK on purpose; the Java UserStatus enum is the only list. ACTIVE and DELETED are used by the checks below, never rename them
 -- Every live account has a way to sign in
