@@ -9,6 +9,7 @@ import com.ticktit.auth.repository.UserRepository;
 import com.ticktit.auth.repository.VerificationCodeRepository;
 import com.ticktit.common.enums.ErrorCode;
 import com.ticktit.common.exception.ApiException;
+import com.ticktit.common.ratelimit.RateLimiter;
 import com.ticktit.notification.EmailService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final TokenService tokenService;
+    private final RateLimiter rateLimiter;
 
     @Value("${app.base-url}")
     private String baseUrl;
@@ -106,7 +108,13 @@ public class AuthService {
     public void resendVerification(String rawEmail) {
         userRepository.findByEmail(normalizeEmail(rawEmail))
                 .filter(user -> user.getStatus() == UserStatus.PENDING_VERIFICATION)
-                .ifPresent(this::sendVerificationLink);
+                .ifPresent(user -> {
+                    try {
+                        sendVerificationLink(user);
+                    } catch (ApiException throttled) {
+                        // stay silent: a 429 here would reveal that the email has a pending account
+                    }
+                });
     }
 
     // ---------------------------------------------------------------- login (password, then email OTP)
@@ -117,7 +125,9 @@ public class AuthService {
      */
     @Transactional
     public void login(String rawEmail, String password) {
-        User user = userRepository.findByEmail(normalizeEmail(rawEmail)).orElse(null);
+        String email = normalizeEmail(rawEmail);
+        rateLimiter.check("rl:login:email:" + email, 10, Duration.ofMinutes(15));   // password guessing from many IPs
+        User user = userRepository.findByEmail(email).orElse(null);
         String hash = (user != null && user.getPasswordHash() != null) ? user.getPasswordHash() : dummyHash;
         boolean passwordOk = passwordEncoder.matches(password, hash);   // always runs: same timing for unknown emails
 
@@ -245,6 +255,8 @@ public class AuthService {
     // ---------------------------------------------------------------- shared
 
     private void sendVerificationLink(User user) {
+        // repeated sign-up or resend for one email: max 5 links an hour, so nobody can flood someone's inbox
+        rateLimiter.check("rl:verify-mail:" + user.getEmail(), 5, Duration.ofHours(1));
         Instant now = Instant.now();
         codeRepository.markAllCodeUsed(user.getId(), CodePurpose.EMAIL_VERIFY, now);   // old links stop working
 

@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -31,6 +32,12 @@ class AuthServiceSignupTest {
     @Autowired AuthService authService;
     @Autowired UserRepository userRepository;
     @MockitoBean EmailService emailService;
+    @Autowired StringRedisTemplate redis;
+
+    @org.junit.jupiter.api.BeforeEach
+    void resetRateLimits() {
+        redis.delete(redis.keys("rl:*" + EMAIL + "*"));   // re-running the tests must not hit our own limits
+    }
 
     @AfterEach
     void cleanUp() {
