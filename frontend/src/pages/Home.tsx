@@ -1,17 +1,16 @@
 import { Link, useSearchParams } from "react-router-dom";
-import { MovieCard } from "../components/MovieCard";
-import { MOVIES } from "../data/catalog";
-import { useCity } from "../hooks/useCity";
+import { catalogApi, type MovieCard as Movie } from "../api/catalog";
+import { MovieCard, MovieCardSkeleton } from "../components/MovieCard";
+import { useApi } from "../hooks/useApi";
+import { useCities, useCity } from "../hooks/useCity";
 
 export function Home() {
   const [city] = useCity();
-  const [params] = useSearchParams();
-  const q = params.get("q")?.toLowerCase() ?? "";
-  const matches = (title: string, genres: string[]) =>
-    !q || title.toLowerCase().includes(q) || genres.some((g) => g.toLowerCase().includes(q));
+  const cityName = useCities().find((c) => c.slug === city)?.name ?? "";
+  const q = useSearchParams()[0].get("q") ?? "";
 
-  const nowShowing = MOVIES.filter((m) => !m.comingSoon && matches(m.title, m.genres));
-  const comingSoon = MOVIES.filter((m) => m.comingSoon && matches(m.title, m.genres));
+  const nowShowing = useApi(() => catalogApi.movies({ city, status: "NOW_SHOWING", q, size: 24 }), [city, q]);
+  const comingSoon = useApi(() => catalogApi.movies({ status: "COMING_SOON", q, size: 12 }), [q]);
 
   return (
     <>
@@ -26,7 +25,7 @@ export function Home() {
                 money after the show.
               </p>
               <div className="hero__actions">
-                <a href="#now-showing" className="btn btn--accent">Browse movies in {city}</a>
+                <a href="#now-showing" className="btn btn--accent">Browse movies{cityName && ` in ${cityName}`}</a>
                 <a href="#how-it-works" className="btn btn--ghost">How group booking works</a>
               </div>
             </div>
@@ -35,9 +34,9 @@ export function Home() {
                 <span className="ticket__label">Group of 4 · Paper Kites</span>
                 <span className="ticket__seats">F7 F8 F9 F10</span>
                 <ul className="ticket__people">
-                  <li><span className="dot dot--paid" />Asha · paid ₹240</li>
-                  <li><span className="dot dot--paid" />Rahul · paid ₹240</li>
-                  <li><span className="dot dot--paid" />Sneha · paid ₹240</li>
+                  <li><span className="dot dot--paid" />Asha · paid ₹180</li>
+                  <li><span className="dot dot--paid" />Rahul · paid ₹180</li>
+                  <li><span className="dot dot--paid" />Sneha · paid ₹180</li>
                   <li><span className="dot" />Kabir · paying…</li>
                 </ul>
               </div>
@@ -49,32 +48,15 @@ export function Home() {
       <div className="container">
         {q && (
           <p className="search-summary">
-            Results for <strong>“{params.get("q")}”</strong> · <Link to="/">clear</Link>
+            Results for <strong>“{q}”</strong> · <Link to="/">clear</Link>
           </p>
         )}
 
-        <section id="now-showing" className="section">
-          <div className="section__head">
-            <h2>Now showing in {city}</h2>
-          </div>
-          {nowShowing.length ? (
-            <div className="movie-grid">
-              {nowShowing.map((m) => <MovieCard key={m.slug} movie={m} />)}
-            </div>
-          ) : (
-            <p className="empty">No movies match your search.</p>
-          )}
-        </section>
+        <MovieSection id="now-showing" title={`Now showing${cityName ? ` in ${cityName}` : ""}`} state={nowShowing}
+          empty={q ? "No movies match your search." : "No shows in this city right now. Try another city."} />
 
-        {comingSoon.length > 0 && (
-          <section className="section">
-            <div className="section__head">
-              <h2>Coming soon</h2>
-            </div>
-            <div className="movie-grid">
-              {comingSoon.map((m) => <MovieCard key={m.slug} movie={m} />)}
-            </div>
-          </section>
+        {(comingSoon.loading || (comingSoon.data?.content.length ?? 0) > 0) && (
+          <MovieSection title="Coming soon" state={comingSoon} empty="" />
         )}
 
         {!q && (
@@ -101,5 +83,29 @@ export function Home() {
         )}
       </div>
     </>
+  );
+}
+
+function MovieSection({ id, title, state, empty }: {
+  id?: string;
+  title: string;
+  state: ReturnType<typeof useApi<{ content: Movie[] }>>;
+  empty: string;
+}) {
+  return (
+    <section id={id} className="section">
+      <div className="section__head">
+        <h2>{title}</h2>
+      </div>
+      {state.error ? (
+        <p className="form-error" role="alert">{state.error.message}</p>
+      ) : state.loading ? (
+        <div className="movie-grid">{Array.from({ length: 5 }, (_, i) => <MovieCardSkeleton key={i} />)}</div>
+      ) : state.data?.content.length ? (
+        <div className="movie-grid">{state.data.content.map((m) => <MovieCard key={m.slug} movie={m} />)}</div>
+      ) : (
+        <p className="empty">{empty}</p>
+      )}
+    </section>
   );
 }

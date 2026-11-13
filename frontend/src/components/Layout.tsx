@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { CITIES } from "../data/catalog";
-import { useCity } from "../hooks/useCity";
+import { useCities, useCity } from "../hooks/useCity";
+import { Logo } from "./Logo";
 
 export function Layout() {
   return (
@@ -19,17 +19,14 @@ export function Layout() {
 function Header() {
   const { status, user } = useAuth();
   const [city, setCity] = useCity();
+  const cities = useCities();
   const navigate = useNavigate();
 
   return (
     <header className="site-header">
       <div className="container site-header__row">
         <Link to="/" className="logo" aria-label="Ticktit home">
-          <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
-            <path d="M5 9h22v5a2 2 0 0 0 0 4v5H5v-5a2 2 0 0 0 0-4z" fill="var(--accent)" />
-            <path d="M12 9v14" stroke="var(--ink)" strokeWidth="1.6" strokeDasharray="2 2" />
-          </svg>
-          <span>Ticktit</span>
+          <Logo size={24} onDark />
         </Link>
 
         <form
@@ -48,8 +45,9 @@ function Header() {
           <label className="city-select">
             <span className="visually-hidden">City</span>
             <select value={city} onChange={(e) => setCity(e.target.value)}>
-              {CITIES.map((c) => (
-                <option key={c}>{c}</option>
+              {cities.length === 0 && <option value={city}>…</option>}
+              {cities.map((c) => (
+                <option key={c.slug} value={c.slug}>{c.name}</option>
               ))}
             </select>
           </label>
