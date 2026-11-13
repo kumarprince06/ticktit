@@ -1,0 +1,11 @@
+# Production overrides. Activate with SPRING_PROFILES_ACTIVE=prod. Secrets still come from env vars.
+spring:
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+app:
+  demo-data:
+    enabled: false   # never put the fictional catalogue in a real database
