@@ -29,7 +29,15 @@ public enum ErrorCode {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "User not found"),
     LINK_INVALID(HttpStatus.BAD_REQUEST, "This link is invalid or has expired. Please request a new one"),
     OTP_INVALID(HttpStatus.BAD_REQUEST, "The code is incorrect or has expired. Please try again or request a new code"),
-    REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Your session has expired. Please sign in again");
+    REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Your session has expired. Please sign in again"),
+
+    // Groups
+    SHOW_NOT_BOOKABLE(HttpStatus.CONFLICT, "This show can't be booked any more. Please pick another show"),
+    GROUP_FULL(HttpStatus.BAD_REQUEST, "This group is full. Ask the organiser to start a new one"),
+    GROUP_BOOKED(HttpStatus.CONFLICT, "This group has already booked its tickets"),
+    GROUP_CANCELLED(HttpStatus.CONFLICT, "The organiser cancelled this group"),
+    NOT_LEADER(HttpStatus.FORBIDDEN, "Only the group organiser can do this"),
+    LEADER_CANNOT_LEAVE(HttpStatus.CONFLICT, "You organise this group. Cancel the group instead of leaving it");
 
     private final HttpStatus httpStatus;
     private final String message;

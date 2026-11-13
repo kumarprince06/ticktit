@@ -65,6 +65,8 @@ public class GoogleAuthService {
         try {
             jwt = googleDecoder.decode(idToken);   // signature, expiry, issuer, audience (our client id)
         } catch (JwtException e) {
+            // the reason only (expired, wrong audience, bad signature...), never the token itself
+            log.info("Google token rejected: {}", e.getMessage());
             throw new ApiException(ErrorCode.INVALID_GOOGLE_TOKEN);
         }
         return signIn(jwt);
@@ -75,6 +77,7 @@ public class GoogleAuthService {
         String sub = jwt.getSubject();
         String email = jwt.getClaimAsString("email");
         if (sub == null || email == null || !Boolean.parseBoolean(String.valueOf(jwt.getClaims().get("email_verified")))) {
+            log.info("Google token rejected: missing sub/email or email not verified by Google");
             throw new ApiException(ErrorCode.INVALID_GOOGLE_TOKEN);
         }
         email = email.trim().toLowerCase(Locale.ROOT);

@@ -1,7 +1,7 @@
 import { api } from "./client";
 
 /** Mirrors the backend's AuthDtos. */
-export type User = { id: string; name: string; email: string; role: string };
+export type User = { id: string; name: string; email: string; role: string; avatarUrl: string | null };
 export type AuthResponse = { accessToken: string; user: User; isNewUser?: boolean | null };
 
 export const authApi = {

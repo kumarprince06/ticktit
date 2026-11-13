@@ -132,7 +132,8 @@ public class AuthController {
     // ---------------------------------------------------------------- helpers
 
     private ResponseEntity<AuthResponse> signedIn(User user, TokenPair tokens, Boolean isNewUser) {
-        UserSummary summary = new UserSummary(user.getPublicId(), user.getName(), user.getEmail(), user.getRole().name());
+        UserSummary summary = new UserSummary(user.getPublicId(), user.getName(), user.getEmail(), user.getRole().name(),
+                user.getAvatarUrl());
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie(tokens.refreshToken(), tokens.refreshExpiresAt()).toString())
                 .body(new AuthResponse(tokens.accessToken(), summary, isNewUser));

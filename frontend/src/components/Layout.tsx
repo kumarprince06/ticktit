@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useCities, useCity } from "../hooks/useCity";
+import { Avatar } from "./Avatar";
 import { Logo } from "./Logo";
 
 export function Layout() {
@@ -52,7 +53,7 @@ function Header() {
             </select>
           </label>
           {status === "signed-in" && user ? (
-            <UserMenu name={user.name} />
+            <UserMenu name={user.name} avatarUrl={user.avatarUrl} />
           ) : status === "signed-out" ? (
             <Link to="/signin" className="btn btn--accent btn--small">Sign in</Link>
           ) : null}
@@ -62,7 +63,7 @@ function Header() {
   );
 }
 
-function UserMenu({ name }: { name: string }) {
+function UserMenu({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
   const { signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -76,8 +77,8 @@ function UserMenu({ name }: { name: string }) {
 
   return (
     <div className="user-menu" ref={ref}>
-      <button className="avatar" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        {name.trim().charAt(0).toUpperCase()}
+      <button className="avatar" aria-haspopup="menu" aria-expanded={open} aria-label="Account menu" onClick={() => setOpen((o) => !o)}>
+        <Avatar name={name} url={avatarUrl} size={34} />
       </button>
       {open && (
         <div className="user-menu__panel" role="menu">

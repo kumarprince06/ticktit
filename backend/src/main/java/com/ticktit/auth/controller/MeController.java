@@ -24,7 +24,8 @@ public class MeController {
     public UserSummary me(@AuthenticationPrincipal Jwt jwt) {
         return userRepository.findByPublicId(UUID.fromString(jwt.getSubject()))
                 .filter(user -> user.getStatus() == UserStatus.ACTIVE)
-                .map(user -> new UserSummary(user.getPublicId(), user.getName(), user.getEmail(), user.getRole().name()))
+                .map(user -> new UserSummary(user.getPublicId(), user.getName(), user.getEmail(), user.getRole().name(),
+                        user.getAvatarUrl()))
                 .orElseThrow(() -> new ApiException(ErrorCode.UNAUTHORIZED));   // deleted/blocked since the token was issued
     }
 }
