@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#16122b" />
+    <meta name="description" content="Ticktit: book movie tickets together and let everyone pay their own share." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>Ticktit</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // Opened as a file (double-click / "Open in browser")? The app needs the dev server, so say so instead of a blank page.
+      if (location.protocol === "file:") {
+        document.getElementById("root").innerHTML =
+          '<div style="font:16px system-ui,sans-serif;max-width:560px;margin:80px auto;padding:0 16px;color:#1c1a29">' +
+          "<h1 style=\"font-size:22px\">Ticktit needs its dev server</h1>" +
+          "<p>This page was opened as a file. In a terminal run:</p>" +
+          '<pre style="background:#f1eff8;padding:12px;border-radius:8px">cd frontend\nnpm run dev</pre>' +
+          '<p>then open <a href="http://localhost:5173">http://localhost:5173</a>.</p></div>';
+      }
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
