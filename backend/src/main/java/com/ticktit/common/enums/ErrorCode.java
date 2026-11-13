@@ -37,7 +37,19 @@ public enum ErrorCode {
     GROUP_BOOKED(HttpStatus.CONFLICT, "This group has already booked its tickets"),
     GROUP_CANCELLED(HttpStatus.CONFLICT, "The organiser cancelled this group"),
     NOT_LEADER(HttpStatus.FORBIDDEN, "Only the group organiser can do this"),
-    LEADER_CANNOT_LEAVE(HttpStatus.CONFLICT, "You organise this group. Cancel the group instead of leaving it");
+    LEADER_CANNOT_LEAVE(HttpStatus.CONFLICT, "You organise this group. Cancel the group instead of leaving it"),
+
+    // Booking
+    TOO_MANY_SEATS(HttpStatus.BAD_REQUEST, "You can hold up to 8 seats at a time"),
+    SEATS_UNAVAILABLE(HttpStatus.CONFLICT, "Some of these seats were just taken. Please pick others"),
+    PAYMENT_IN_PROGRESS(HttpStatus.CONFLICT, "Payment has started for this group, so the seats can't be changed now"),
+    BOOKING_NOT_LOCKED(HttpStatus.CONFLICT, "These seats are no longer held. Please pick them again"),
+    INVALID_ASSIGNMENT(HttpStatus.BAD_REQUEST, "Each seat must go to someone in this group"),
+    LOCKING_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Seat booking is busy right now. Please try again in a moment"),
+
+    // Idempotency (ADR-010)
+    IDEMPOTENCY_KEY_REQUIRED(HttpStatus.BAD_REQUEST, "This request needs an Idempotency-Key header"),
+    IDEMPOTENCY_KEY_REUSED(HttpStatus.UNPROCESSABLE_CONTENT, "This request key was already used for a different request");
 
     private final HttpStatus httpStatus;
     private final String message;

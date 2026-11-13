@@ -28,7 +28,7 @@ public class GroupController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public GroupCreated create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CreateGroupRequest request) {
-        return groupService.create(caller(jwt), request.showId());
+        return groupService.create(caller(jwt), request.showId(), request.solo());
     }
 
     @GetMapping("/preview/{code}")

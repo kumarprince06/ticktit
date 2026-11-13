@@ -70,7 +70,7 @@ class CatalogServiceTest {
     @Test
     void seatMapHasEverySeatWithItsPriceAndAnAisle() {
         long showId = catalog.shows("paper-kites", "siliguri", tomorrow()).getFirst().id();
-        SeatMap map = catalog.seatMap(showId);
+        SeatMap map = catalog.seatMap(showId, null);
 
         assertEquals(146, map.seats().size());
         SeatView a5 = find(map, "A5");
@@ -83,7 +83,7 @@ class CatalogServiceTest {
     @Test
     void unknownMovieOrShowIs404() {
         assertEquals(ErrorCode.NOT_FOUND, assertThrows(ApiException.class, () -> catalog.movie("nope")).getErrorCode());
-        assertEquals(ErrorCode.NOT_FOUND, assertThrows(ApiException.class, () -> catalog.seatMap(-1)).getErrorCode());
+        assertEquals(ErrorCode.NOT_FOUND, assertThrows(ApiException.class, () -> catalog.seatMap(-1, null)).getErrorCode());
     }
 
     private static SeatView find(SeatMap map, String seatNo) {

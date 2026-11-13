@@ -10,6 +10,8 @@ export class ApiError extends Error {
     message: string,
     public errors?: Record<string, string>,
     public requestId?: string,
+    /** The whole error body, for extra fields like "unavailable" / "alternative" on a seat conflict. */
+    public body?: Record<string, unknown>,
   ) {
     super(message);
   }
@@ -49,10 +51,10 @@ export function refreshAccessToken(): Promise<string | null> {
   return refreshing;
 }
 
-type Options = { method?: string; body?: unknown; auth?: boolean };
+type Options = { method?: string; body?: unknown; auth?: boolean; headers?: Record<string, string> };
 
 /** Calls /api/v1{path}. With auth: true it sends the access token and, on a 401, refreshes once and retries. */
-export async function api<T = void>(path: string, { method = "GET", body, auth = false }: Options = {}): Promise<T> {
+export async function api<T = void>(path: string, { method = "GET", body, auth = false, headers = {} }: Options = {}): Promise<T> {
   const send = () =>
     fetch(`/api/v1${path}`, {
       method,
@@ -60,6 +62,7 @@ export async function api<T = void>(path: string, { method = "GET", body, auth =
       headers: {
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...(auth && accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...headers,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
@@ -82,6 +85,7 @@ export async function api<T = void>(path: string, { method = "GET", body, auth =
       problem.detail ?? "Something went wrong. Please try again.",
       problem.errors,
       problem.requestId,
+      problem,
     );
   }
   const text = await res.text();

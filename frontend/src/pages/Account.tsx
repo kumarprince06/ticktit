@@ -26,7 +26,7 @@ export function Account() {
       </dl>
 
       <section className="section">
-        <h2>Your groups</h2>
+        <h2>Your bookings and groups</h2>
         {groups.data?.length ? (
           <ul className="group-list">
             {groups.data.map((g) => (
@@ -34,7 +34,10 @@ export function Account() {
                 <Link to={`/groups/${g.id}`} className="group-list__item">
                   <strong>{g.item.title}</strong>
                   <span className="muted">{showWhen(g.item.startsAt)} · {g.item.venue}</span>
-                  <span className="muted">{g.memberCount} member{g.memberCount === 1 ? "" : "s"} · {g.youAreLeader ? "You organise" : "Joined"}{g.status !== "OPEN" && ` · ${g.status.toLowerCase()}`}</span>
+                  <span className="muted">
+                    {g.maxMembers === 1 ? "Just you" : `${g.memberCount} member${g.memberCount === 1 ? "" : "s"} · ${g.youAreLeader ? "You organise" : "Joined"}`}
+                    {g.status !== "OPEN" && ` · ${g.status.toLowerCase()}`}
+                  </span>
                 </Link>
               </li>
             ))}
@@ -44,10 +47,6 @@ export function Account() {
         )}
       </section>
 
-      <section className="section">
-        <h2>Your bookings</h2>
-        <p className="empty">No bookings yet. When you book with a group, your tickets will show up here.</p>
-      </section>
 
       <button
         className="btn btn--ghost"

@@ -35,10 +35,11 @@ export type GroupView = {
   shareLink: string;
   whatsappShareUrl: string;
 };
-export type GroupCard = { id: string; code: string; status: GroupStatus; memberCount: number; youAreLeader: boolean; item: ItemSummary };
+export type GroupCard = { id: string; code: string; status: GroupStatus; memberCount: number; maxMembers: number; youAreLeader: boolean; item: ItemSummary };
 
 export const groupApi = {
-  create: (showId: number) => api<GroupCreated>("/groups", { method: "POST", body: { showId }, auth: true }),
+  /** solo = "Book for myself": a booking for one person, with no invites. */
+  create: (showId: number, solo = false) => api<GroupCreated>("/groups", { method: "POST", body: { showId, solo }, auth: true }),
   preview: (code: string) => api<GroupPreview>(`/groups/preview/${encodeURIComponent(code)}`),
   join: (code: string) => api<{ groupId: string }>(`/groups/${encodeURIComponent(code)}/join`, { method: "POST", auth: true }),
   view: (id: string) => api<GroupView>(`/groups/${id}`, { auth: true }),
