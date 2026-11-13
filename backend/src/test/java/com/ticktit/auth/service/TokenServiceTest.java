@@ -69,11 +69,30 @@ class TokenServiceTest {
     void reusingAnOldTokenRevokesTheWholeFamily() {
         TokenService.TokenPair first = tokenService.issue(user);
         TokenService.TokenPair second = tokenService.refresh(first.refreshToken());
+        rotatedAgo(first, TokenService.REUSE_GRACE.plusSeconds(5));   // reuse well after the rotation = theft
 
         ApiException ex = assertThrows(ApiException.class, () -> tokenService.refresh(first.refreshToken()));
         assertEquals(ErrorCode.REFRESH_TOKEN_INVALID, ex.getErrorCode());
         // the legitimate newest token is gone too: the attacker and the victim must both sign in again
         assertThrows(ApiException.class, () -> tokenService.refresh(second.refreshToken()));
+    }
+
+    @Test
+    void reuseRightAfterRotationIsALostResponseNotTheft() {
+        // e.g. the user reloaded the page before the browser saved the new cookie
+        TokenService.TokenPair first = tokenService.issue(user);
+        TokenService.TokenPair second = tokenService.refresh(first.refreshToken());
+
+        TokenService.TokenPair retried = assertDoesNotThrow(() -> tokenService.refresh(first.refreshToken()));
+        assertEquals(first.refreshExpiresAt(), retried.refreshExpiresAt());   // same family, same 7-day cap
+        assertDoesNotThrow(() -> tokenService.refresh(retried.refreshToken()));  // the session goes on
+        assertDoesNotThrow(() -> tokenService.refresh(second.refreshToken()));   // nothing was revoked
+    }
+
+    private void rotatedAgo(TokenService.TokenPair pair, java.time.Duration ago) {
+        RefreshToken token = refreshTokenRepository.findByTokenHash(Secrets.sha256Hex(pair.refreshToken())).orElseThrow();
+        token.setUsedAt(Instant.now().minus(ago));
+        refreshTokenRepository.saveAndFlush(token);
     }
 
     @Test

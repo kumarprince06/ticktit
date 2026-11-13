@@ -25,7 +25,7 @@ All tables also have `id BIGINT` identity PK and `created_at TIMESTAMPTZ DEFAULT
 
 Later columns on `users` (added with their feature): `home_city_id`, `last_login_at`, `deleted_at`.
 
-**Codes:** OTPs and link tokens are stored only as SHA-256 hashes in `verification_codes`. No raw code is ever written to a table or a log. A daily job deletes expired codes and expired refresh families.
+**Codes:** OTPs and link tokens are stored only as SHA-256 hashes in `verification_codes`. No raw code is ever written to a table or a log. OTP limits (1 per 60 s, 5 per hour, 5 wrong tries) are counted from this table, not Redis. `AuthCleanupJob` runs daily at 03:30 IST: deletes codes expired over a day, expired refresh families, and `PENDING_VERIFICATION` users older than 7 days.
 
 #### Signup and sign-in, step by step
 
@@ -53,7 +53,7 @@ Later columns on `users` (added with their feature): `home_city_id`, `last_login
 **C. Google sign-in (no OTP)**
 1. `POST /auth/google {idToken}` → verify signature, `aud`, `iss`, `exp`, `email_verified = true`.
 2. Find user by `google_sub` → found: sign in.
-3. Else find by `lower(email)` → found: set `google_sub`, `email_verified_at` if null, status `ACTIVE` (a pending email+password account becomes verified, because Google proved the email). Sign in.
+3. Else find by `lower(email)` → found: set `google_sub`, `email_verified_at` if null. A `PENDING_VERIFICATION` account becomes `ACTIVE` and its `password_hash` is cleared: that password was set by whoever typed the email and never proven to belong to its owner. Sign in.
 4. Else create: name + avatar from Google, `password_hash = null`, status `ACTIVE`, `email_verified_at = now()`, consents. `isNewUser = true`.
 5. A Google-only user can add a password later through "Set password" (email OTP required).
 
@@ -164,9 +164,9 @@ Travel bookings also add to `bookings`: `supplier` (IRCTC, RedBus operator...), 
 |---|---|---|---|
 | `lock:show:{showId}:seat:{seatNo}` | groupId | 300 s; extended to payment window + 60 s | Seat lock, e.g. `lock:show:101:seat:A1 = 12` |
 | `seats:show:{showId}` | seat map JSON | 60 s | Cache; deleted on lock/unlock/confirm/cancel |
-| `rl:otp:cooldown:{email}` | 1 | 60 s | Resend cooldown (OTP and verification link) |
-| `rl:otp:hour:{email}` | counter | 1 h | Max 5 emails per hour |
-| `rl:login:email:{email}` / `rl:login:ip:{ip}` | counter | 15 min / 1 min | Login rate limit (10 per email, 20 per IP) |
+| `rl:auth:{path}:{ip}` | counter | 1 min | Every auth endpoint: max 20 per IP per endpoint (`AuthRateLimitFilter`) |
+| `rl:login:email:{email}` | counter | 15 min | Login: max 10 per email, from any IP |
+| `rl:verify-mail:{email}` | counter | 1 h | Verification links: max 5 per email |
 | `rl:remind:{groupId}:{userId}` | 1 | 60 s | Remind limit |
 
 ## 4. File Storage

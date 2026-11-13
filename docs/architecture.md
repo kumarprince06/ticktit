@@ -124,9 +124,9 @@ Every event: `eventId` (UUID), `occurredAt`, `requestId`, `payload`. Consumers r
 |---|---|---|---|
 | `lock:show:{showId}:seat:{seatNo}` | groupId | 300 s, extended to window + 60 s | Seat lock |
 | `seats:show:{showId}` | seat map JSON | 60 s | Cache, evicted on lock/unlock/confirm |
-| `rl:otp:cooldown:{email}` | 1 | 60 s | Resend cooldown (OTP and verification link) |
-| `rl:otp:hour:{email}` | counter | 1 h | Max 5 emails per hour |
-| `rl:login:email:{email}` / `rl:login:ip:{ip}` | counter | 15 min / 1 min | Login rate limit (10 per email, 20 per IP) |
+| `rl:auth:{path}:{ip}` | counter | 1 min | Every auth endpoint: max 20 per IP per endpoint (`AuthRateLimitFilter`) |
+| `rl:login:email:{email}` | counter | 15 min | Login: max 10 per email, from any IP |
+| `rl:verify-mail:{email}` | counter | 1 h | Verification links: max 5 per email |
 | `rl:remind:{groupId}:{userId}` | 1 | 60 s | Remind limit |
 
 ## 7. Concurrency Control (three layers)

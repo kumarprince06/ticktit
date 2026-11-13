@@ -23,7 +23,6 @@ CREATE TABLE users (
 );
 
 CREATE UNIQUE INDEX ux_users_email  ON users (lower(email));
-CREATE UNIQUE INDEX ux_users_phone  ON users (phone) WHERE phone IS NOT NULL;
 CREATE UNIQUE INDEX ux_users_google ON users (google_sub) WHERE google_sub IS NOT NULL;
 
 CREATE TABLE verification_codes (

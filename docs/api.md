@@ -12,7 +12,7 @@
 
 | Method | Path | Request | Response |
 |---|---|---|---|
-| POST | `/auth/signup` | `{name, email, phone?, password}` | `201` (verification link emailed) / `409 EMAIL_ALREADY_EXISTS` / `409 PHONE_ALREADY_EXISTS` / `400 VALIDATION_FAILED` |
+| POST | `/auth/signup` | `{name, email, phone?, password}` | `201` (verification link emailed) / `409 EMAIL_ALREADY_EXISTS` / `400 VALIDATION_FAILED` |
 | GET | `/auth/verify-email?token=` | - | `200` (account ACTIVE) / `400 LINK_INVALID` (bad, used or expired) |
 | POST | `/auth/resend-verification` | `{email}` | `202` always / `429` |
 | POST | `/auth/login` | `{email, password}` | `202` (OTP emailed, no tokens yet) / `401 INVALID_CREDENTIALS` / `403 EMAIL_NOT_VERIFIED` / `429 TOO_MANY_REQUESTS` |

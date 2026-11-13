@@ -22,6 +22,9 @@ public interface VerificationCodeRepository extends JpaRepository<VerificationCo
     @Query("UPDATE VerificationCode v SET v.usedAt = :now WHERE v.userId = :userId AND v.purpose = :purpose AND v.usedAt IS NULL")
     int markAllCodeUsed(Long userId, CodePurpose purpose, Instant now);
 
+    // throttle: how many codes of this kind were sent to the user recently (used ones count too)
+    long countByUserIdAndPurposeAndCreatedAtAfter(Long userId, CodePurpose purpose, Instant since);
+
     // daily cleanup job
     @Modifying
     int deleteByExpiresAtBefore(Instant cutoff);

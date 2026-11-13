@@ -21,7 +21,6 @@ public enum ErrorCode {
     // Auth
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Incorrect email or password"),
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "An account with this email already exists. Please sign in instead"),
-    PHONE_ALREADY_EXISTS(HttpStatus.CONFLICT, "This phone number is already linked to another account"),
     INVALID_GOOGLE_TOKEN(HttpStatus.UNAUTHORIZED, "Google sign-in failed. Please try again"),
     INVALID_PASSWORD_RESET_TOKEN(HttpStatus.BAD_REQUEST, "This password reset link is invalid. Please request a new one"),
     PASSWORD_RESET_TOKEN_EXPIRED(HttpStatus.BAD_REQUEST, "This password reset link has expired. Please request a new one"),
