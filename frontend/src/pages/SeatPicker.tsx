@@ -15,7 +15,7 @@ export function SeatPicker() {
   const showId = useParams().showId!;
   const map = useApi(() => catalogApi.seats(showId), [showId]);
   const [selected, setSelected] = useState<string[]>([]);
-  const [showNote, setShowNote] = useState(false);
+  const [note, setNote] = useState<"solo" | "group" | null>(null);
 
   // seats grouped by category, in drawing order, each block with its own grid size
   const blocks = useMemo(() => {
@@ -101,12 +101,25 @@ export function SeatPicker() {
               <span className="muted"> · {[...selected].sort().join(", ")}</span>
               <p className="booking-bar__total">{rupees(total)}</p>
             </div>
-            <button className="btn btn--accent" onClick={() => setShowNote(true)}>Book together</button>
+            <div className="booking-bar__actions">
+              <button className="btn btn--accent" onClick={() => setNote("solo")}
+                title="Pay for all the selected seats yourself">
+                Book for myself
+              </button>
+              {selected.length > 1 && (
+                <button className="btn btn--ghost" onClick={() => setNote("group")}
+                  title="Share a link; each friend pays for their own seat">
+                  Book together
+                </button>
+              )}
+            </div>
           </div>
-          {showNote && (
+          {note && (
             <div className="container">
               <p className="form-notice" role="status">
-                Group booking and split payment are coming soon. Seat locking and payments are the next backend module.
+                {note === "solo"
+                  ? `You'll pay ${rupees(total)} for ${selected.length > 1 ? "all these seats" : "this seat"}. Payment is coming soon with the booking module.`
+                  : "You'll share a link and each friend pays for their own seat. Group booking is coming soon with the booking module."}
               </p>
             </div>
           )}
