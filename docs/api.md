@@ -57,15 +57,19 @@ Group first, seats later (PRD journey 1): the organiser makes a group for a show
 
 ## Bookings
 
+Money-changing calls need `Idempotency-Key: <uuid>` (ADR-010): one per user action, reused on retries. Same key + same body returns the stored response; same key + different body is `422 IDEMPOTENCY_KEY_REUSED`; missing is `400 IDEMPOTENCY_KEY_REQUIRED`. A failed call does not use up its key.
+
 | Method | Path | Request | Response |
 |---|---|---|---|
-| POST ★ | `/bookings/lock` | `{groupId, seats:["A1","A2"]}` | `200 {bookingId, status:"LOCKED", lockExpiresAt}` / `400 TOO_MANY_SEATS` / `403 NOT_LEADER` / `409 SEATS_UNAVAILABLE {unavailable:[...], alternative:[...]}` / `409 PAYMENT_IN_PROGRESS` / `503 LOCKING_UNAVAILABLE` |
-| POST | `/bookings/{id}/assign` | `{assignments:[{seatNo, userId}]}` | `200 {shares:[{userId, sharePaise}]}` (leader, LOCKED only) |
-| POST | `/bookings/unlock` | `{groupId}` | `204` (leader, LOCKED only) |
-| GET | `/bookings/{id}` | - | `200 {booking, show, seats, members, payments, refunds}` |
-| GET | `/bookings/my` | - | `200 [{booking summary}]` upcoming + past, newest first |
-| GET | `/bookings/{id}/tickets` | - | `200 {groupQr?, seatQrs:[{seatNo, qrToken, holder}]}` |
-| GET | `/bookings/{id}/tickets.pdf` | - | `200 application/pdf` |
+| POST ★ | `/bookings/lock` | `{groupId, seats:["F7","F8"]}` | `200 BookingView` (LOCKED, 5 min) / `400 TOO_MANY_SEATS` (max 8) / `403 NOT_LEADER` / `409 SEATS_UNAVAILABLE {unavailable:[...], alternative:[...] or null}` / `409 PAYMENT_IN_PROGRESS` / `409 SHOW_NOT_BOOKABLE` / `503 LOCKING_UNAVAILABLE` (Redis down: fails closed). Locking again replaces the group's seats; the new seats are taken first, so a failed re-lock keeps the old ones |
+| POST | `/bookings/unlock` | `{groupId}` | `204` (organiser; nothing to do if no lock) / `409 PAYMENT_IN_PROGRESS` |
+| POST | `/bookings/{id}/assign` | `{assignments:[{seatNo, userId}]}` | `200 BookingView` (organiser, LOCKED only) / `400 INVALID_ASSIGNMENT` / `409 BOOKING_NOT_LOCKED` |
+| GET | `/groups/{groupId}/booking` | - | `200 BookingView` / `204` when the group has no current booking (members only) |
+| GET | `/shows/{id}/seats?group={groupId}` | - | Seat map with live status `AVAILABLE` / `LOCKED` / `BOOKED` / `BLOCKED`, and `heldByYou` for that group's seats |
+
+`BookingView` = `{id, code, status, lockExpiresAt, paymentDeadline, totalPaise, youAreLeader, seats:[{seatNo, category, ticketPricePaise, payablePaise, assignee}], shares:[{member, seats, sharePaise}]}`. Per seat payable = ticket (GST inside) + ₹20 fee + 18% GST on the fee (PAYMENT.md). Default seating: one seat per member in join order, extras to the organiser. A single booking ("Book for myself") is a group of one.
+
+Coming with later modules: `GET /bookings/my`, `/bookings/{id}/tickets`, `/bookings/{id}/tickets.pdf`.
 
 ## Payments
 
