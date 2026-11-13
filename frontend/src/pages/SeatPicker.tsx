@@ -19,7 +19,9 @@ type Conflict = { message: string; alternative: string[] | null };
  */
 export function SeatPicker() {
   const showId = useParams().showId!;
-  const groupId = useSearchParams()[0].get("group");
+  const [params] = useSearchParams();
+  const groupId = params.get("group");
+  const solo = params.get("solo") === "1";
   const navigate = useNavigate();
 
   const [map, setMap] = useState<SeatMap | null>(null);
@@ -107,7 +109,7 @@ export function SeatPicker() {
           message: `${taken.join(", ") || "Some seats"} ${taken.length === 1 ? "was" : "were"} just taken.`,
           alternative: (e.body?.alternative as string[] | null | undefined) ?? null,
         });
-        if (kind === "solo") navigate(`/shows/${showId}/seats?group=${forGroup}`, { replace: true });   // the group exists now
+        if (kind === "solo") navigate(`/shows/${showId}/seats?group=${forGroup}&solo=1`, { replace: true });   // the booking exists now
       } else {
         setError(e instanceof ApiError ? e.message : "Something went wrong. Please try again.");
       }
@@ -120,7 +122,7 @@ export function SeatPicker() {
     setBusy("solo");
     setError(null);
     try {
-      const group = await groupApi.create(show.id);
+      const group = await groupApi.create(show.id, true);
       await hold(group.groupId, selected, "solo");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Something went wrong. Please try again.");
@@ -145,7 +147,7 @@ export function SeatPicker() {
     <div className="container seat-page">
       <div className="seat-page__head">
         <Link to={groupId ? `/groups/${groupId}` : `/movies/${show.movieSlug}`} className="back">
-          ← {groupId ? "Back to your group" : show.movieTitle}
+          ← {groupId ? (solo ? "Back to your booking" : "Back to your group") : show.movieTitle}
         </Link>
         <p className="muted">
           {show.theatre}, {show.area} · {show.screen} · {show.language} {show.format} ·{" "}
@@ -153,7 +155,11 @@ export function SeatPicker() {
           {showTime(show.startsAt)}
         </p>
       </div>
-      {groupId && <p className="form-notice">Choose seats for your whole group. They'll be held for 5 minutes.</p>}
+      {groupId && (
+        <p className="form-notice">
+          {solo ? "Choose your seats." : "Choose seats for your whole group."} They'll be held for 5 minutes.
+        </p>
+      )}
 
       <div className="seat-map" role="group" aria-label="Seat map">
         {blocks.map(({ category, seats: blockSeats, top, rows }) => (
@@ -204,7 +210,7 @@ export function SeatPicker() {
             <div className="booking-bar__actions">
               {groupId ? (
                 <button className="btn btn--accent" disabled={!selected.length || busy !== null} onClick={() => hold(groupId, selected, "hold")}>
-                  {busy === "hold" ? "Holding…" : `Hold ${selected.length} seat${selected.length === 1 ? "" : "s"} for the group`}
+                  {busy === "hold" ? "Holding…" : `Hold ${selected.length} seat${selected.length === 1 ? "" : "s"}${solo ? "" : " for the group"}`}
                 </button>
               ) : (
                 <>

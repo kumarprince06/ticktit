@@ -341,3 +341,4 @@ main { min-height: calc(100vh - 220px); }
 .seats-panel__actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 8px 0; }
 .small { font-size: 0.85rem; }
 .group-cancel { text-align: center; margin-top: 16px; }
+.payment-soon { background: var(--brand-soft); color: var(--ink-2); border-radius: 10px; padding: 10px 14px; font-size: 0.9rem; margin: 8px 0 0; }

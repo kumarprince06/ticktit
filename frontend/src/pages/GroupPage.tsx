@@ -54,6 +54,7 @@ export function GroupPage() {
     }
   };
   const open = group.status === "OPEN";
+  const solo = group.maxMembers === 1;   // "Book for myself": same engine, no group screens
   const spotsLeft = group.maxMembers - group.members.length;
 
   return (
@@ -61,13 +62,13 @@ export function GroupPage() {
       <Link to={group.item.link} className="back">← {group.item.title}</Link>
 
       <header className="group-head">
-        <p className="eyebrow eyebrow--dark">Group · {group.code}</p>
+        <p className="eyebrow eyebrow--dark">{solo ? "Your booking" : "Group"} · {group.code}</p>
         <h1>{group.item.title}</h1>
         <p className="muted">{showWhen(group.item.startsAt)} · {group.item.venue} · {group.item.detail}</p>
-        {group.status === "CANCELLED" && <p className="form-error">This group was cancelled.</p>}
+        {group.status === "CANCELLED" && <p className="form-error">This {solo ? "booking" : "group"} was cancelled.</p>}
       </header>
 
-      {open && (
+      {open && !solo && (
         <section className="share-box">
           <h2>Invite your friends</h2>
           <p className="muted">Anyone with this link can join until the group is full ({spotsLeft} spot{spotsLeft === 1 ? "" : "s"} left).</p>
@@ -84,7 +85,7 @@ export function GroupPage() {
         </section>
       )}
 
-      <section className="section">
+      {!solo && <section className="section">
         <h2>Who's coming ({group.members.length}/{group.maxMembers})</h2>
         <ul className="members">
           {group.members.map((m) => (
@@ -104,14 +105,16 @@ export function GroupPage() {
           ))}
         </ul>
         {actionError && <p className="form-error" role="alert">{actionError}</p>}
-      </section>
+      </section>}
+      {solo && actionError && <p className="form-error" role="alert">{actionError}</p>}
 
       {open && (
-        <SeatsPanel group={group} booking={booking} act={act}
-          onExpired={() => setBooking(null)} chooseSeats={() => navigate(`/shows/${group.item.itemId}/seats?group=${group.id}`)} />
+        <SeatsPanel group={group} booking={booking} act={act} solo={solo}
+          onExpired={() => setBooking(null)}
+          chooseSeats={() => navigate(`/shows/${group.item.itemId}/seats?group=${group.id}${solo ? "&solo=1" : ""}`)} />
       )}
 
-      {open && group.youAreLeader && !booking && (
+      {open && group.youAreLeader && !booking && !solo && (
         <p className="group-cancel">
           <button className="link-button" onClick={() => {
             if (confirm("Cancel this group? Everyone will be removed.")) act(() => groupApi.cancel(group.id));
@@ -125,8 +128,9 @@ export function GroupPage() {
 }
 
 /** The group's seats: choose them, the 5-minute countdown, who sits where, and each person's share. */
-function SeatsPanel({ group, booking, act, onExpired, chooseSeats }: {
+function SeatsPanel({ group, booking, act, solo, onExpired, chooseSeats }: {
   group: GroupView;
+  solo: boolean;
   booking: BookingView | null;
   act: (action: () => Promise<unknown>) => Promise<void>;
   onExpired: () => void;
@@ -137,9 +141,9 @@ function SeatsPanel({ group, booking, act, onExpired, chooseSeats }: {
   if (!booking) {
     return (
       <section className="next-step">
-        <h2>Next: choose seats</h2>
+        <h2>{solo ? "Choose your seats" : "Next: choose seats"}</h2>
         <p className="muted">
-          {group.youAreLeader
+          {solo ? "Your seats were released. Pick them again and they'll be held for 5 minutes." : group.youAreLeader
             ? "When your friends have joined, pick seats for everyone. They're held for 5 minutes while you sort out who sits where."
             : "The organiser picks seats for the group. You'll then pay for your own seat."}
         </p>
@@ -161,12 +165,12 @@ function SeatsPanel({ group, booking, act, onExpired, chooseSeats }: {
       </div>
 
       <table className="seats-table">
-        <thead><tr><th>Seat</th><th>Who sits here</th><th className="num">Pays</th></tr></thead>
+        <thead><tr><th>Seat</th>{!solo && <th>Who sits here</th>}<th className="num">{solo ? "Price" : "Pays"}</th></tr></thead>
         <tbody>
           {booking.seats.map((s) => (
             <tr key={s.seatNo}>
               <td><strong>{s.seatNo}</strong> <span className="muted">{s.category.toLowerCase()}</span></td>
-              <td>
+              {!solo && <td>
                 {booking.youAreLeader ? (
                   <select aria-label={`Who sits in ${s.seatNo}`} value={s.assignee?.userId ?? ""}
                     onChange={(e) => act(() => bookingApi.assign(booking.id, [{ seatNo: s.seatNo, userId: e.target.value }]))}>
@@ -174,17 +178,17 @@ function SeatsPanel({ group, booking, act, onExpired, chooseSeats }: {
                     {group.members.map((m) => <option key={m.userId} value={m.userId}>{m.name}{m.you ? " (you)" : ""}</option>)}
                   </select>
                 ) : (s.assignee?.name ?? "Not decided yet")}
-              </td>
+              </td>}
               <td className="num">{rupees(s.payablePaise)}</td>
             </tr>
           ))}
         </tbody>
-        <tfoot><tr><td colSpan={2}>Total</td><td className="num">{rupees(booking.totalPaise)}</td></tr></tfoot>
+        <tfoot><tr><td colSpan={solo ? 1 : 2}>Total</td><td className="num">{rupees(booking.totalPaise)}</td></tr></tfoot>
       </table>
       <p className="muted small">Each seat includes the ticket price, a ₹20 convenience fee and 18% GST on the fee.</p>
 
-      <h3>Everyone's share</h3>
-      <ul className="shares">
+      {!solo && <h3>Everyone's share</h3>}
+      {!solo && <ul className="shares">
         {booking.shares.map((sh) => (
           <li key={sh.member.userId}>
             <span>{sh.member.name}</span>
@@ -192,16 +196,18 @@ function SeatsPanel({ group, booking, act, onExpired, chooseSeats }: {
             <strong>{rupees(sh.sharePaise)}</strong>
           </li>
         ))}
-      </ul>
+      </ul>}
 
       {booking.youAreLeader && booking.status === "LOCKED" && (
         <div className="seats-panel__actions">
-          <button className="btn btn--accent" disabled title="Payment is the next step we're building">Continue to payment</button>
+          <button className="btn btn--accent" disabled aria-describedby="payment-soon">Continue to payment</button>
           <button className="btn btn--ghost" onClick={chooseSeats}>Change seats</button>
           <button className="link-button" onClick={() => act(() => bookingApi.unlock(group.id))}>Release seats</button>
         </div>
       )}
-      <p className="muted small">Payment (everyone pays their share, or one person pays for all) is coming next.</p>
+      <p id="payment-soon" className="payment-soon">
+        Payment isn't switched on yet: it's the next part being built. Your seats stay held until the timer runs out.
+      </p>
     </section>
   );
 }
