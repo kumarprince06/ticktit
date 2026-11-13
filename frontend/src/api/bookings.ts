@@ -2,16 +2,22 @@ import { api } from "./client";
 
 /** Mirrors the backend's BookingDtos. Money in paise. */
 export type Person = { userId: string; name: string; avatarUrl: string | null };
-export type SeatLine = { seatNo: string; category: string; ticketPricePaise: number; payablePaise: number; assignee: Person | null };
-export type Share = { member: Person; seats: string[]; sharePaise: number };
+export type SeatLine = { seatNo: string; category: string; ticketPricePaise: number; payablePaise: number; assignee: Person | null; paid: boolean };
+export type Share = { member: Person; seats: string[]; sharePaise: number; leftPaise: number; paid: boolean };
 export type BookingView = {
   id: string;
   code: string;
   status: "LOCKED" | "PAYMENT_PENDING" | "CONFIRMED" | "RELEASED" | "FAILED" | "CANCELLED";
+  mode: "SPLIT" | "PAY_FOR_ALL" | null;
   lockExpiresAt: string;
   paymentDeadline: string | null;
   totalPaise: number;
+  paidPaise: number;
+  /** what you still have to pay right now */
+  youOwePaise: number;
   youAreLeader: boolean;
+  invoiceNo: string | null;
+  confirmedAt: string | null;
   seats: SeatLine[];
   shares: Share[];
 };

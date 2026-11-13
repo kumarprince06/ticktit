@@ -31,6 +31,13 @@ public interface InventoryProvider {
     /** Gives the holder's units back. Units held by someone else are left alone. */
     void release(long itemId, List<String> units, String holder);
 
+    /**
+     * The final double-booking guard (architecture.md §4.3): marks the units sold to this booking only if every one
+     * is still available, in one conditional update. Returns how many were sold; fewer than asked = conflict, and the
+     * caller must roll back.
+     */
+    int confirm(long itemId, List<String> units, long bookingId);
+
     /** Current price and category of each unit (GST-inclusive, paise). Unknown units are left out. */
     Map<String, UnitPrice> price(long itemId, List<String> units);
 

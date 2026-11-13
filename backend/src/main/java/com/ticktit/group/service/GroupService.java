@@ -182,6 +182,12 @@ public class GroupService {
 
     // ---------------------------------------------------------------- for the booking module
 
+    /** A booking for this group was confirmed: nobody can join or change it now. */
+    @Transactional
+    public void markBooked(long groupId) {
+        groupRepository.findById(groupId).ifPresent(g -> g.setStatus(GroupStatus.BOOKED));
+    }
+
     /** What booking needs about a group. memberIds are in join order, the organiser first. */
     public record GroupRef(long id, UUID publicId, ItemType itemType, long itemId, long leaderId, GroupStatus status,
                            List<Long> memberIds) {

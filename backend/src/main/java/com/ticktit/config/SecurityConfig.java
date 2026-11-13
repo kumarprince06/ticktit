@@ -49,6 +49,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/cities", "/api/v1/movies/**", "/api/v1/shows/**", "/api/v1/groups/preview/**").permitAll()
                         .requestMatchers("/actuator/health", "/error").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/**").permitAll()   // HMAC-verified in WebhookService
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(o -> o

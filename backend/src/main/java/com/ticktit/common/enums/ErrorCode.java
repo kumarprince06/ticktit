@@ -49,7 +49,14 @@ public enum ErrorCode {
 
     // Idempotency (ADR-010)
     IDEMPOTENCY_KEY_REQUIRED(HttpStatus.BAD_REQUEST, "This request needs an Idempotency-Key header"),
-    IDEMPOTENCY_KEY_REUSED(HttpStatus.UNPROCESSABLE_CONTENT, "This request key was already used for a different request");
+    IDEMPOTENCY_KEY_REUSED(HttpStatus.UNPROCESSABLE_CONTENT, "This request key was already used for a different request"),
+
+    // Payments
+    SEATS_NOT_ASSIGNED(HttpStatus.BAD_REQUEST, "Give every seat to someone, and everyone at least one seat, before splitting the payment"),
+    PAYMENT_WINDOW_CLOSED(HttpStatus.CONFLICT, "The time to pay has run out. Any payments made will be refunded"),
+    ALREADY_PAID(HttpStatus.CONFLICT, "This is already paid"),
+    PAYMENT_SIGNATURE_INVALID(HttpStatus.BAD_REQUEST, "We couldn't verify this payment. If money was taken, it will be refunded automatically"),
+    PAYMENT_GATEWAY_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Payments are temporarily unavailable. Please try again in a minute");
 
     private final HttpStatus httpStatus;
     private final String message;

@@ -47,6 +47,15 @@ public class UserDirectory {
                 .collect(Collectors.toMap(UserCard::id, Function.identity()));
     }
 
+    /** Email + phone, for payment prefill and the booking's contact details. */
+    public record Contact(String name, String email, String phone) {
+    }
+
+    public Contact contact(long userId) {
+        User u = userRepository.findById(userId).orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
+        return new Contact(u.getName(), u.getEmail(), u.getPhone());
+    }
+
     public java.util.Optional<UserCard> byPublicId(UUID publicId) {
         return userRepository.findByPublicId(publicId).map(UserDirectory::card);
     }

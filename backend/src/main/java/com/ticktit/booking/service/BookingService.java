@@ -222,9 +222,12 @@ public class BookingService {
     public Optional<BookingView> current(UUID callerId, UUID groupId) {
         UserCard caller = users.requireActive(callerId);
         GroupRef group = groups.forBooking(groupId, caller.id());
-        return bookingRepository.findFirstByGroupIdAndStatusIn(group.id(), ACTIVE)
+        // the current attempt; otherwise the last result worth showing (booked, or failed and being refunded)
+        Optional<Booking> shown = bookingRepository.findFirstByGroupIdAndStatusIn(group.id(), ACTIVE)
                 .filter(b -> !b.isLockExpired())
-                .map(b -> view(b, unitRepository.findByBookingId(b.getId()), group, caller));
+                .or(() -> bookingRepository.findFirstByGroupIdOrderByCreatedAtDesc(group.id())
+                        .filter(b -> b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.FAILED));
+        return shown.map(b -> view(b, unitRepository.findByBookingId(b.getId()), group, caller));
     }
 
     /** Group cancelled by its organiser: let go of any seats it holds (runs in the cancel transaction). */
@@ -253,23 +256,31 @@ public class BookingService {
         List<BookingUnit> sorted = units.stream().sorted(Comparator.comparing(BookingUnit::getUnitRef, SEAT_ORDER)).toList();
         Map<Long, UserCard> people = users.byIds(group.memberIds());
         Map<Long, Share> shares = new LinkedHashMap<>();
-        group.memberIds().forEach(id -> shares.put(id, new Share(person(people.get(id)), new ArrayList<>(), 0)));
+        group.memberIds().forEach(id -> shares.put(id, new Share(person(people.get(id)), new ArrayList<>(), 0, 0, true)));
 
         List<SeatLine> lines = new ArrayList<>();
         for (BookingUnit u : sorted) {
             // a member who left keeps nothing: their seat shows as unassigned until the organiser reassigns it
             Long assignee = u.getAssigneeUserId() != null && shares.containsKey(u.getAssigneeUserId()) ? u.getAssigneeUserId() : null;
+            boolean paid = u.getPaidAt() != null;
             lines.add(new SeatLine(u.getUnitRef(), u.getCategory(), u.getTicketPricePaise(), u.payablePaise(),
-                    assignee == null ? null : person(people.get(assignee))));
+                    assignee == null ? null : person(people.get(assignee)), paid));
             if (assignee != null) {
                 Share s = shares.get(assignee);
                 s.seats().add(u.getUnitRef());
-                shares.put(assignee, new Share(s.member(), s.seats(), s.sharePaise() + u.payablePaise()));
+                long left = s.leftPaise() + (paid ? 0 : u.payablePaise());
+                shares.put(assignee, new Share(s.member(), s.seats(), s.sharePaise() + u.payablePaise(), left, left == 0));
             }
         }
+        long everythingLeft = sorted.stream().filter(u -> u.getPaidAt() == null).mapToLong(BookingUnit::payablePaise).sum();
+        boolean payForAll = booking.getMode() == com.ticktit.booking.entity.PaymentMode.PAY_FOR_ALL || group.memberIds().size() == 1;
+        long youOwe = !booking.getStatus().isActive() ? 0
+                : payForAll ? (group.isLeader(caller.id()) ? everythingLeft : 0)
+                : shares.containsKey(caller.id()) ? shares.get(caller.id()).leftPaise() : 0;
         return new BookingView(booking.getPublicId(), booking.getBookingCode(), booking.getStatus().name(),
-                booking.getLockExpiresAt(), booking.getPaymentDeadline(), booking.getTotalPaise(),
-                group.isLeader(caller.id()), lines, List.copyOf(shares.values()));
+                booking.getMode() == null ? null : booking.getMode().name(), booking.getLockExpiresAt(), booking.getPaymentDeadline(),
+                booking.getTotalPaise(), booking.getPaidPaise(), youOwe, group.isLeader(caller.id()), booking.getInvoiceNo(),
+                booking.getConfirmedAt(), lines, List.copyOf(shares.values()));
     }
 
     private static Person person(UserCard card) {

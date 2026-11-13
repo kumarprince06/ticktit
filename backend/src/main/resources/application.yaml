@@ -32,6 +32,11 @@ app:
   mail:
     from: ${MAIL_FROM:Ticktit <no-reply@ticktit.local>}
 
+razorpay:
+  key-id: ${RAZORPAY_KEY_ID:}             # rzp_test_... in dev (public, sent to the browser checkout)
+  key-secret: ${RAZORPAY_KEY_SECRET:}     # secret: server only
+  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}   # set when a webhook is configured in the Razorpay dashboard
+
 google:
   client-id: ${GOOGLE_CLIENT_ID:}   # OAuth client id from Google Cloud Console; Google sign-in is off while empty
 
