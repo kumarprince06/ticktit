@@ -7,6 +7,7 @@ import com.ticktit.common.enums.ItemType;
 import com.ticktit.common.exception.ApiException;
 import com.ticktit.common.inventory.InventoryProvider;
 import com.ticktit.common.inventory.InventoryProvider.ItemSummary;
+import com.ticktit.group.GroupCancelledEvent;
 import com.ticktit.group.dto.GroupDtos.GroupCard;
 import com.ticktit.group.dto.GroupDtos.GroupCreated;
 import com.ticktit.group.dto.GroupDtos.GroupPreview;
@@ -19,6 +20,7 @@ import com.ticktit.group.entity.MemberRole;
 import com.ticktit.group.repository.GroupMemberRepository;
 import com.ticktit.group.repository.GroupRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,9 +54,12 @@ public class GroupService {
     private final UserDirectory users;
     private final Map<ItemType, InventoryProvider> inventories = new EnumMap<>(ItemType.class);
     private final String baseUrl;
+    private final ApplicationEventPublisher events;
 
     public GroupService(GroupRepository groupRepository, GroupMemberRepository memberRepository, UserDirectory users,
-                        List<InventoryProvider> providers, @Value("${app.base-url}") String baseUrl) {
+                        List<InventoryProvider> providers, @Value("${app.base-url}") String baseUrl,
+                        ApplicationEventPublisher events) {
+        this.events = events;
         this.groupRepository = groupRepository;
         this.memberRepository = memberRepository;
         this.users = users;
@@ -163,6 +168,33 @@ public class GroupService {
         }
         requireOpen(group);
         group.setStatus(GroupStatus.CANCELLED);
+        events.publishEvent(new GroupCancelledEvent(group.getId()));   // booking releases any held seats
+    }
+
+    // ---------------------------------------------------------------- for the booking module
+
+    /** What booking needs about a group. memberIds are in join order, the organiser first. */
+    public record GroupRef(long id, UUID publicId, ItemType itemType, long itemId, long leaderId, GroupStatus status,
+                           List<Long> memberIds) {
+        public boolean isLeader(long userId) {
+            return leaderId == userId;
+        }
+    }
+
+    /** The group, if this user is in it; 404 otherwise (outsiders can't tell it exists). */
+    public GroupRef forBooking(UUID groupId, long userId) {
+        BookingGroup group = memberGroup(groupId, userId);
+        return ref(group);
+    }
+
+    public GroupRef forBooking(long groupId) {
+        return ref(groupRepository.findById(groupId).orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND)));
+    }
+
+    private GroupRef ref(BookingGroup g) {
+        List<Long> members = memberRepository.findByGroupIdOrderByJoinedAtAsc(g.getId()).stream()
+                .map(GroupMember::getUserId).toList();
+        return new GroupRef(g.getId(), g.getPublicId(), g.getItemType(), g.getItemId(), g.getLeaderId(), g.getStatus(), members);
     }
 
     // ---------------------------------------------------------------- helpers

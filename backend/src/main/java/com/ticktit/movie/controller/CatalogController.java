@@ -57,8 +57,9 @@ public class CatalogController {
         return catalogService.shows(movie, city, date);
     }
 
+    /** ?group= (your group's id) marks the seats your group holds. */
     @GetMapping("/shows/{id}/seats")
-    public SeatMap seats(@PathVariable long id) {
-        return catalogService.seatMap(id);
+    public SeatMap seats(@PathVariable long id, @RequestParam(required = false) String group) {
+        return catalogService.seatMap(id, group);
     }
 }

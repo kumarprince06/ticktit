@@ -46,6 +46,7 @@ public class CatalogService {
     private final NamedParameterJdbcTemplate jdbc;
     private final MovieRepository movieRepository;
     private final CityRepository cityRepository;
+    private final ShowInventory showInventory;
 
     public List<CityDto> cities() {
         return cityRepository.findByIsActiveTrueOrderByNameAsc().stream()
@@ -140,8 +141,11 @@ public class CatalogService {
                 rs.getInt("available"), rs.getInt("total")));
     }
 
-    /** Every seat of a show with its position, category, price and stored status. Locks are added by booking. */
-    public SeatMap seatMap(long showId) {
+    /**
+     * Every seat of a show with its position, category, price and live status. {@code group} (a group's public id,
+     * optional) marks that group's own held seats, so the organiser sees them as theirs, not as taken.
+     */
+    public SeatMap seatMap(long showId, String group) {
         List<ShowInfo> info = jdbc.query("""
                 SELECT s.id, m.slug, m.title, t.name AS theatre, t.area, c.name AS city, sc.name AS screen,
                        s.language, s.format, s.starts_at
@@ -161,6 +165,7 @@ public class CatalogService {
         Map<String, Long> prices = prices(jdbc.queryForObject(
                 "SELECT string_agg(category || ':' || price_paise, ',') FROM show_prices WHERE show_id = :id",
                 Map.of("id", showId), String.class));
+        Map<String, String> locks = showInventory.lockedSeats(showId);
         List<SeatView> seats = jdbc.query("""
                 SELECT ss.seat_no, sl.row_label, sl.col_no, sl.grid_row, sl.grid_col, ss.category, ss.status
                 FROM show_seats ss
@@ -169,8 +174,15 @@ public class CatalogService {
                 ORDER BY sl.grid_row, sl.grid_col""", Map.of("id", showId), (rs, i) -> new SeatView(
                 rs.getString("seat_no"), rs.getString("row_label"), rs.getInt("col_no"), rs.getInt("grid_row"),
                 rs.getInt("grid_col"), rs.getString("category"),
-                prices.getOrDefault(rs.getString("category"), 0L), rs.getString("status")));
+                prices.getOrDefault(rs.getString("category"), 0L),
+                liveStatus(rs.getString("status"), locks.get(rs.getString("seat_no"))),
+                group != null && group.equals(locks.get(rs.getString("seat_no")))));
         return new SeatMap(info.getFirst(), prices, seats);
+    }
+
+    /** A stored AVAILABLE seat that a group holds right now shows as LOCKED. */
+    private static String liveStatus(String stored, String holder) {
+        return "AVAILABLE".equals(stored) && holder != null ? "LOCKED" : stored;
     }
 
     private static List<String> strings(Array array) throws SQLException {

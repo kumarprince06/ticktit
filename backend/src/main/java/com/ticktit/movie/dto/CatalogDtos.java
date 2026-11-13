@@ -41,9 +41,12 @@ public final class CatalogDtos {
                            String screen, String language, String format, Instant startsAt) {
     }
 
-    /** gridRow/gridCol place the seat on the drawn map, so aisles and gaps show. status: AVAILABLE/BOOKED/BLOCKED. */
+    /**
+     * gridRow/gridCol place the seat on the drawn map, so aisles and gaps show.
+     * status: AVAILABLE / LOCKED (held by a group right now) / BOOKED / BLOCKED. heldByYou: your group holds it.
+     */
     public record SeatView(String seatNo, String row, int col, int gridRow, int gridCol, String category,
-                           long pricePaise, String status) {
+                           long pricePaise, String status, boolean heldByYou) {
     }
 
     public record SeatMap(ShowInfo show, Map<String, Long> prices, List<SeatView> seats) {
