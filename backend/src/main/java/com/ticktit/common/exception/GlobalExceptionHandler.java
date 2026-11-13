@@ -29,7 +29,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ApiException.class)
     public ProblemDetail handleApiException(ApiException ex) {
         log.info("Request failed: {}", ex.getErrorCode());
-        return createProblemDetails(ex.getErrorCode());
+        ProblemDetail problemDetail = createProblemDetails(ex.getErrorCode());
+        ex.getDetails().forEach(problemDetail::setProperty);
+        return problemDetail;
     }
 
     // Missing, bad or expired JWT (forwarded here from SecurityConfig)
