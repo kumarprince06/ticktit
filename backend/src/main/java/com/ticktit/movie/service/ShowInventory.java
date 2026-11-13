@@ -119,6 +119,14 @@ public class ShowInventory implements InventoryProvider {
     }
 
     @Override
+    public int confirm(long showId, List<String> seats, long bookingId) {
+        return jdbc.update("""
+                UPDATE show_seats SET status = 'BOOKED', booking_id = :booking, version = version + 1
+                WHERE show_id = :show AND seat_no IN (:seats) AND status = 'AVAILABLE'""",
+                Map.of("booking", bookingId, "show", showId, "seats", seats));
+    }
+
+    @Override
     public Map<String, UnitPrice> price(long showId, List<String> seats) {
         Map<String, UnitPrice> prices = new LinkedHashMap<>();
         jdbc.query("""

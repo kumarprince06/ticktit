@@ -33,13 +33,19 @@ public final class BookingDtos {
     }
 
     /** One seat: the ticket price (as shown by the cinema) and what is paid for it (ticket + fee + GST on fee). */
-    public record SeatLine(String seatNo, String category, long ticketPricePaise, long payablePaise, Person assignee) {
+    public record SeatLine(String seatNo, String category, long ticketPricePaise, long payablePaise, Person assignee, boolean paid) {
     }
 
-    public record Share(Person member, List<String> seats, long sharePaise) {
+    /** paid: every seat of this person is paid for (by them, or by the organiser paying for all). */
+    public record Share(Person member, List<String> seats, long sharePaise, long leftPaise, boolean paid) {
     }
 
-    public record BookingView(UUID id, String code, String status, Instant lockExpiresAt, Instant paymentDeadline,
-                              long totalPaise, boolean youAreLeader, List<SeatLine> seats, List<Share> shares) {
+    /**
+     * mode: SPLIT / PAY_FOR_ALL once payment has started. youOwePaise: what the caller still has to pay right now
+     * (their unpaid seats under Split Pay; everything left for the organiser under Pay For All).
+     */
+    public record BookingView(UUID id, String code, String status, String mode, Instant lockExpiresAt, Instant paymentDeadline,
+                              long totalPaise, long paidPaise, long youOwePaise, boolean youAreLeader, String invoiceNo,
+                              Instant confirmedAt, List<SeatLine> seats, List<Share> shares) {
     }
 }

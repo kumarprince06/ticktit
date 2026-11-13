@@ -62,6 +62,14 @@ public class Booking {
 
     private Instant paymentDeadline;
 
+    private String invoiceNo;
+
+    private Instant confirmedAt;
+
+    private String contactEmail;
+
+    private String contactPhone;
+
     /** {"PRIME": 28000}: what each category cost when the seats were locked. */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "jsonb")

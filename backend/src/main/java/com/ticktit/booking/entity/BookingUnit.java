@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
+
 /** One seat in a booking: who sits there and exactly what it costs (PAYMENT.md). Prices are frozen at lock time. */
 @Entity
 @Table(name = "booking_units")
@@ -45,6 +47,9 @@ public class BookingUnit {
 
     @Column(nullable = false)
     private long feeGstPaise;
+
+    /** Set when this seat's money has arrived (own share, or covered by Pay For All). */
+    private Instant paidAt;
 
     /** What the person sitting here pays: ticket (GST inside) + convenience fee + GST on the fee. */
     public long payablePaise() {
