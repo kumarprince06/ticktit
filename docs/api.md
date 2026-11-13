@@ -73,15 +73,27 @@ Coming with later modules: `GET /bookings/my`, `/bookings/{id}/tickets`, `/booki
 
 ## Payments
 
+Gateway: Razorpay (test mode in dev; ADR-011). Amounts are always computed by the server. Money counts only after the server proves it with Razorpay: checkout signature + fetching the payment, a signed webhook, or the reconciliation job (every 2 min for orders open 2+ min).
+
 | Method | Path | Request | Response |
 |---|---|---|---|
-| POST ★ | `/payments/split` | `{bookingId}` | `200 {status:"PAYMENT_PENDING", paymentDeadline, shares:[{userId, sharePaise}]}` (leader) / `400 SEATS_LESS_THAN_MEMBERS` |
-| POST ★ | `/payments/pay` | `{bookingId}` | `201 {paymentId, gatewayOrderId, amountPaise, status:"PENDING", checkout:{...}}` / `409 ALREADY_PAID` / `409 WINDOW_CLOSED` |
-| POST ★ | `/payments/pay-for-all` | `{bookingId}` | `201 {paymentId, gatewayOrderId, amountPaise (remaining unpaid), status:"PENDING"}` (leader) |
-| POST ★ | `/payments/cover` (v1.1) | `{bookingId, beneficiaryUserId}` | `201 {paymentId, amountPaise, status:"PENDING"}` |
-| GET | `/payments/{id}` | - | `200 {paymentId, status, amountPaise}` (UI polls after checkout) |
-| POST | `/webhooks/payment` | gateway event, header `X-Signature` (HMAC-SHA256 of raw body) | `200` always after storing; `400` on bad signature |
-| POST | `/mock-gateway/orders/{orderId}/complete` (dev profile only) | `{vpa: "success@mock" or "failure@mock"}` | `202` - mock fires the webhook ~1 s later |
+| POST ★ | `/payments/checkout` | `{bookingId, mode?}` + `Idempotency-Key` | `200 {paymentId, gateway, keyId, orderId, amountPaise, currency, bookingCode, description, paymentDeadline, prefill}` for Razorpay Checkout. The organiser's first call starts the 10-min window: `mode` `SPLIT` (each member pays their seats) or `PAY_FOR_ALL` (organiser pays everything; solo bookings always). Later: members call it for their share; the organiser can send `PAY_FOR_ALL` to pay what's still unpaid. An open order for the same amount is reused. Errors: `400 SEATS_NOT_ASSIGNED` (split needs every seat assigned and everyone seated), `403 NOT_LEADER`, `409 ALREADY_PAID / PAYMENT_WINDOW_CLOSED / BOOKING_NOT_LOCKED`, `503 PAYMENT_GATEWAY_UNAVAILABLE` |
+| POST | `/payments/verify` | `{orderId, paymentId, signature}` (Razorpay Checkout's success callback) | `200 {paymentStatus, bookingStatus}` / `400 PAYMENT_SIGNATURE_INVALID` / `404` (not your payment) |
+| POST | `/webhooks/razorpay` (public) | Razorpay event, `X-Razorpay-Signature`, `X-Razorpay-Event-Id` | `200` / `400` bad signature. HMAC on the raw body; each event handled once; the payment is re-fetched from Razorpay before money moves. Needs `RAZORPAY_WEBHOOK_SECRET` |
+
+When paid = total, in one transaction: seats `BOOKED` (conditional update: the final double-booking guard), booking `CONFIRMED` with a gap-free GST invoice number (`TT/2026-27/000001`), group `BOOKED`.
+
+Automatic refunds (REFUND.md), one per payment, sent with reference `refund-{id}` and retried 1/5/15 min, then `FAILED` + alert:
+
+| Reason | When |
+|---|---|
+| `TIMER_EXPIRED` | Payment window ended unpaid: booking `FAILED`, seats freed, everyone who paid refunded |
+| `LATE_PAYMENT` | Money arrived after the booking failed or was confirmed |
+| `OVERPAID` | Money arrived for seats someone else already paid (e.g. organiser paid for all) |
+| `AMOUNT_MISMATCH` | Gateway amount differs from ours: payment marked FAILED for review |
+| `SEAT_CONFLICT` | Confirm found a seat no longer available (should never happen): booking FAILED, all refunded |
+
+Stored: `payments` (one per order: payer, covers OWN_SHARE / EVERYTHING_LEFT, amount, status, gateway ids, method + masked detail, failure reason), `payment_attempts` (every try on an order, failed ones too), `refunds`, `webhook_events`, `invoice_counters`. Never stored: card number, CVV, UPI PIN.
 
 ## Check-in (role SCANNER or ADMIN)
 
