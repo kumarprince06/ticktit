@@ -222,6 +222,8 @@ main { min-height: calc(100vh - 220px); }
 .seat--selected { background: var(--brand); border-color: var(--brand); color: #fff; }
 .seat--selected:hover:not(:disabled) { background: var(--brand); }
 .seat--taken { background: var(--line); border-color: var(--line); color: transparent; cursor: not-allowed; }
+.seat--locked { background: repeating-linear-gradient(45deg, #fde7b0 0 4px, #fff4d6 4px 8px); border-color: #e7b440; color: transparent; cursor: not-allowed; }
+.conflict { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .screen {
   margin: 28px auto 0; max-width: 520px; text-align: center; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em;
   border-top: 4px solid var(--brand); border-radius: 50% 50% 0 0 / 14px 14px 0 0; padding-top: 8px;
@@ -321,3 +323,21 @@ main { min-height: calc(100vh - 220px); }
 .group-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
 .group-list__item { display: grid; gap: 2px; background: var(--surface); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); color: var(--text); }
 .group-list__item:hover { text-decoration: none; outline: 2px solid var(--brand-soft); }
+
+/* ---------- held seats ---------- */
+.seats-panel { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+.seats-panel__head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.seats-panel__head h2 { margin: 0; }
+.countdown { font-variant-numeric: tabular-nums; font-weight: 800; background: var(--brand-soft); color: var(--brand); border-radius: 999px; padding: 6px 14px; }
+.countdown--urgent { background: var(--danger-soft); color: var(--danger); }
+.seats-table { width: 100%; border-collapse: collapse; margin: 16px 0 8px; font-size: 0.95rem; }
+.seats-table th, .seats-table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+.seats-table th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.seats-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.seats-table tfoot td { font-weight: 800; color: var(--ink); border-bottom: 0; }
+.seats-table select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--surface); max-width: 100%; }
+.shares { list-style: none; padding: 0; margin: 0 0 16px; display: grid; gap: 6px; }
+.shares li { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+.seats-panel__actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 8px 0; }
+.small { font-size: 0.85rem; }
+.group-cancel { text-align: center; margin-top: 16px; }

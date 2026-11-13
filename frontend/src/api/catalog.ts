@@ -47,7 +47,9 @@ export type Seat = {
   gridCol: number;
   category: string;
   pricePaise: number;
-  status: "AVAILABLE" | "BOOKED" | "BLOCKED";
+  status: "AVAILABLE" | "LOCKED" | "BOOKED" | "BLOCKED";
+  /** your group holds this seat right now */
+  heldByYou: boolean;
 };
 
 export type SeatMap = {
@@ -78,11 +80,13 @@ export const catalogApi = {
     api<Page<MovieCard>>(`/movies?${qs(p)}`),
   movie: (slug: string) => api<MovieDetail>(`/movies/${encodeURIComponent(slug)}`),
   shows: (movie: string, city: string, date: string) => api<ShowSummary[]>(`/shows?${qs({ movie, city, date })}`),
-  seats: (showId: number | string) => api<SeatMap>(`/shows/${showId}/seats`),
+  seats: (showId: number | string, group?: string) =>
+    api<SeatMap>(`/shows/${showId}/seats${group ? `?group=${encodeURIComponent(group)}` : ""}`),
 };
 
-/** 18000 paise -> "₹180" */
-export const rupees = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN")}`;
+/** 18000 paise -> "₹180"; 68720 -> "₹687.20" (paisa always shown with two digits) */
+export const rupees = (paise: number) =>
+  `₹${(paise / 100).toLocaleString("en-IN", paise % 100 ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : {})}`;
 
 /** Show times are always shown in IST, whatever the viewer's computer clock is set to. */
 export const showTime = (iso: string) =>
