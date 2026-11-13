@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { Avatar } from "../components/Avatar";
 
 export function Account() {
   const { user, signOut } = useAuth();
@@ -8,7 +9,10 @@ export function Account() {
 
   return (
     <div className="container narrow section">
-      <h1>Your account</h1>
+      <div className="account-head">
+        <Avatar name={user.name} url={user.avatarUrl} size={64} />
+        <h1>Your account</h1>
+      </div>
       <dl className="details">
         <dt>Name</dt>
         <dd>{user.name}</dd>

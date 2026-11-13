@@ -92,10 +92,10 @@ main { min-height: calc(100vh - 220px); }
 }
 .city-select option { color: var(--text); }
 .user-menu { position: relative; }
-.avatar {
-  width: 38px; height: 38px; border-radius: 50%; border: 2px solid var(--accent);
-  background: var(--ink-2); color: #fff; font-weight: 700; cursor: pointer;
-}
+.avatar { padding: 0; border: 2px solid var(--accent); border-radius: 50%; background: none; cursor: pointer; display: grid; }
+.avatar-img { display: grid; place-items: center; border-radius: 50%; object-fit: cover; background: var(--ink-2); color: #fff; font-weight: 700; }
+.account-head { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.account-head h1 { margin: 0; }
 .user-menu__panel {
   position: absolute; right: 0; top: 46px; min-width: 200px; background: var(--surface); color: var(--text);
   border-radius: 12px; box-shadow: var(--shadow); padding: 8px; display: grid;

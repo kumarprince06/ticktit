@@ -57,6 +57,7 @@ public final class AuthDtos {
     public record AuthResponse(String accessToken, UserSummary user, Boolean isNewUser) {
     }
 
-    public record UserSummary(UUID id, String name, String email, String role) {
+    /** avatarUrl: the Google profile picture, or null (the app then shows the first letter of the name). */
+    public record UserSummary(UUID id, String name, String email, String role, String avatarUrl) {
     }
 }
