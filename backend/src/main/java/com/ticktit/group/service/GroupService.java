@@ -69,6 +69,12 @@ public class GroupService {
 
     @Transactional
     public GroupCreated create(UUID callerId, long showId) {
+        return create(callerId, showId, false);
+    }
+
+    /** solo: room for one person only ("Book for myself"), so nobody can join it. */
+    @Transactional
+    public GroupCreated create(UUID callerId, long showId, boolean solo) {
         UserCard leader = users.requireActive(callerId);
         ItemSummary show = describe(ItemType.SHOW, showId);
         if (!show.bookable()) {
@@ -80,6 +86,9 @@ public class GroupService {
         group.setItemType(ItemType.SHOW);
         group.setItemId(showId);
         group.setLeaderId(leader.id());
+        if (solo) {
+            group.setMaxMembers(1);
+        }
         groupRepository.save(group);
         addMember(group, leader.id(), MemberRole.LEADER);
 
@@ -132,7 +141,7 @@ public class GroupService {
         UserCard caller = users.requireActive(callerId);
         return groupRepository.findAllForMember(caller.id()).stream()
                 .map(g -> new GroupCard(g.getPublicId(), g.getCode(), g.getStatus().name(),
-                        (int) memberRepository.countByGroupId(g.getId()), g.getLeaderId().equals(caller.id()),
+                        (int) memberRepository.countByGroupId(g.getId()), g.getMaxMembers(), g.getLeaderId().equals(caller.id()),
                         describe(g.getItemType(), g.getItemId())))
                 .toList();
     }

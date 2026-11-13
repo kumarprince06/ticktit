@@ -12,7 +12,8 @@ public final class GroupDtos {
     private GroupDtos() {
     }
 
-    public record CreateGroupRequest(@NotNull @Positive Long showId) {
+    /** solo: "Book for myself" - a group of one that never shows invites (same seat lock and payment code). */
+    public record CreateGroupRequest(@NotNull @Positive Long showId, boolean solo) {
     }
 
     public record GroupCreated(UUID groupId, String code, String shareLink, String whatsappShareUrl) {
@@ -30,7 +31,7 @@ public final class GroupDtos {
                             List<MemberView> members, String shareLink, String whatsappShareUrl) {
     }
 
-    public record GroupCard(UUID id, String code, String status, int memberCount, boolean youAreLeader,
+    public record GroupCard(UUID id, String code, String status, int memberCount, int maxMembers, boolean youAreLeader,
                             ItemSummary item) {
     }
 }
