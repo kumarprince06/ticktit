@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { bookingApi, type BookingView } from "../api/bookings";
+import { paymentApi, payWithRazorpay } from "../api/payments";
 import { rupees } from "../api/catalog";
 import { groupApi, showWhen, type GroupView } from "../api/groups";
 import { Avatar } from "../components/Avatar";
@@ -108,9 +109,10 @@ export function GroupPage() {
       </section>}
       {solo && actionError && <p className="form-error" role="alert">{actionError}</p>}
 
-      {open && (
+      {(open || booking) && (   /* a BOOKED group still shows its confirmed booking */
         <SeatsPanel group={group} booking={booking} act={act} solo={solo}
-          onExpired={() => setBooking(null)}
+          refresh={async () => { setGroup(await groupApi.view(id)); setBooking(await bookingApi.current(id)); }}
+          onExpired={() => { bookingApi.current(id).then(setBooking).catch(() => setBooking(null)); }}
           chooseSeats={() => navigate(`/shows/${group.item.itemId}/seats?group=${group.id}${solo ? "&solo=1" : ""}`)} />
       )}
 
@@ -127,16 +129,23 @@ export function GroupPage() {
   );
 }
 
-/** The group's seats: choose them, the 5-minute countdown, who sits where, and each person's share. */
-function SeatsPanel({ group, booking, act, solo, onExpired, chooseSeats }: {
+/**
+ * The group's seats and money: choose seats, the 5-minute hold, who sits where, then payment (PRD F6/F7):
+ * Split Pay (each pays their share) or Pay For All, the 10-minute window, paid/pending per person, and the result.
+ */
+function SeatsPanel({ group, booking, act, solo, onExpired, chooseSeats, refresh }: {
   group: GroupView;
   solo: boolean;
   booking: BookingView | null;
   act: (action: () => Promise<unknown>) => Promise<void>;
   onExpired: () => void;
   chooseSeats: () => void;
+  refresh: () => Promise<void>;
 }) {
-  const left = useCountdown(booking?.status === "LOCKED" ? booking.lockExpiresAt : null, onExpired);
+  const deadline = booking?.status === "LOCKED" ? booking.lockExpiresAt : booking?.status === "PAYMENT_PENDING" ? booking.paymentDeadline : null;
+  const left = useCountdown(deadline, onExpired);
+  const [paying, setPaying] = useState(false);
+  const [payMessage, setPayMessage] = useState<{ kind: "error" | "info"; text: string } | null>(null);
 
   if (!booking) {
     return (
@@ -152,14 +161,58 @@ function SeatsPanel({ group, booking, act, solo, onExpired, chooseSeats }: {
     );
   }
 
+  if (booking.status === "CONFIRMED") {
+    return (
+      <section className="seats-panel result result--ok">
+        <p className="result__icon" aria-hidden="true">✓</p>
+        <h2>You're booked!</h2>
+        <p>Booking <strong>{booking.code}</strong> · {booking.seats.map((s) => s.seatNo).join(", ")} · {rupees(booking.totalPaise)} paid</p>
+        {booking.invoiceNo && <p className="muted small">GST invoice {booking.invoiceNo}</p>}
+        <p className="muted small">Your QR tickets will appear here once tickets are switched on.</p>
+      </section>
+    );
+  }
+  if (booking.status === "FAILED") {
+    return (
+      <section className="seats-panel result result--failed">
+        <h2>The booking didn't go through</h2>
+        <p>{booking.paidPaise > 0
+          ? "Time ran out before everyone paid, so the seats were released. Everyone who paid is being refunded in full automatically (usually 5–7 working days)."
+          : "Time ran out before payment, so the seats were released."}</p>
+        {group.youAreLeader && <button className="btn btn--accent" onClick={chooseSeats}>Choose seats again</button>}
+      </section>
+    );
+  }
+
+  const pending = booking.status === "PAYMENT_PENDING";
   const urgent = left !== null && left <= 60;
+  const split = booking.mode === "SPLIT";
+
+  const pay = async (mode?: "SPLIT" | "PAY_FOR_ALL") => {
+    setPaying(true);
+    setPayMessage(null);
+    try {
+      const checkout = await paymentApi.checkout(booking.id, mode);
+      await refresh();   // the window may have just started
+      const result = await payWithRazorpay(checkout);
+      if (result.outcome === "paid") setPayMessage({ kind: "info", text: "Payment received. Thank you!" });
+      else if (result.outcome === "failed") setPayMessage({ kind: "error", text: `${result.message} You can try again.` });
+      else setPayMessage({ kind: "info", text: "Payment window closed. Tap Pay whenever you're ready." });
+    } catch (e) {
+      setPayMessage({ kind: "error", text: e instanceof ApiError || e instanceof Error ? e.message : "Something went wrong. Please try again." });
+    } finally {
+      setPaying(false);
+      await refresh();
+    }
+  };
+
   return (
     <section className="seats-panel">
       <div className="seats-panel__head">
-        <h2>Your seats</h2>
+        <h2>{pending ? (solo ? "Payment" : "Payment in progress") : "Your seats"}</h2>
         {left !== null && (
           <span className={`countdown${urgent ? " countdown--urgent" : ""}`} role="timer" aria-live={urgent ? "assertive" : "off"}>
-            Held for {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}
+            {pending ? "Pay within" : "Held for"} {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}
           </span>
         )}
       </div>
@@ -171,7 +224,7 @@ function SeatsPanel({ group, booking, act, solo, onExpired, chooseSeats }: {
             <tr key={s.seatNo}>
               <td><strong>{s.seatNo}</strong> <span className="muted">{s.category.toLowerCase()}</span></td>
               {!solo && <td>
-                {booking.youAreLeader ? (
+                {booking.youAreLeader && !pending ? (
                   <select aria-label={`Who sits in ${s.seatNo}`} value={s.assignee?.userId ?? ""}
                     onChange={(e) => act(() => bookingApi.assign(booking.id, [{ seatNo: s.seatNo, userId: e.target.value }]))}>
                     {!s.assignee && <option value="">Choose…</option>}
@@ -179,7 +232,7 @@ function SeatsPanel({ group, booking, act, solo, onExpired, chooseSeats }: {
                   </select>
                 ) : (s.assignee?.name ?? "Not decided yet")}
               </td>}
-              <td className="num">{rupees(s.payablePaise)}</td>
+              <td className="num">{rupees(s.payablePaise)} {pending && (s.paid ? <span className="tag tag--paid">paid</span> : <span className="tag">due</span>)}</td>
             </tr>
           ))}
         </tbody>
@@ -187,27 +240,70 @@ function SeatsPanel({ group, booking, act, solo, onExpired, chooseSeats }: {
       </table>
       <p className="muted small">Each seat includes the ticket price, a ₹20 convenience fee and 18% GST on the fee.</p>
 
-      {!solo && <h3>Everyone's share</h3>}
+      {!solo && <h3>{pending ? "Who has paid" : "Everyone's share"}</h3>}
       {!solo && <ul className="shares">
         {booking.shares.map((sh) => (
-          <li key={sh.member.userId}>
+          <li key={sh.member.userId} className={pending ? (sh.paid ? "share--paid" : "share--due") : ""}>
             <span>{sh.member.name}</span>
             <span className="muted">{sh.seats.length ? sh.seats.join(", ") : "no seat"}</span>
-            <strong>{rupees(sh.sharePaise)}</strong>
+            <strong>{pending ? (sh.paid ? "Paid" : `${rupees(sh.leftPaise)} due`) : rupees(sh.sharePaise)}</strong>
           </li>
         ))}
       </ul>}
 
-      {booking.youAreLeader && booking.status === "LOCKED" && (
+      {payMessage && <p className={payMessage.kind === "error" ? "form-error" : "form-notice"} role="status">{payMessage.text}</p>}
+
+      {/* Before payment starts: the organiser chooses how to pay */}
+      {booking.youAreLeader && !pending && (
         <div className="seats-panel__actions">
-          <button className="btn btn--accent" disabled aria-describedby="payment-soon">Continue to payment</button>
-          <button className="btn btn--ghost" onClick={chooseSeats}>Change seats</button>
-          <button className="link-button" onClick={() => act(() => bookingApi.unlock(group.id))}>Release seats</button>
+          {solo ? (
+            <button className="btn btn--accent" disabled={paying} onClick={() => pay()}>
+              {paying ? "Opening payment…" : `Pay ${rupees(booking.totalPaise)}`}
+            </button>
+          ) : (
+            <>
+              <button className="btn btn--accent" disabled={paying} onClick={() => pay("SPLIT")}
+                title="Everyone pays for their own seat within 10 minutes">
+                {paying ? "Opening payment…" : "Split: everyone pays their share"}
+              </button>
+              <button className="btn btn--ghost" disabled={paying} onClick={() => pay("PAY_FOR_ALL")}>
+                Pay for everyone ({rupees(booking.totalPaise)})
+              </button>
+            </>
+          )}
+          <button className="btn btn--ghost" disabled={paying} onClick={chooseSeats}>Change seats</button>
+          <button className="link-button" disabled={paying} onClick={() => act(() => bookingApi.unlock(group.id))}>Release seats</button>
         </div>
       )}
-      <p id="payment-soon" className="payment-soon">
-        Payment isn't switched on yet: it's the next part being built. Your seats stay held until the timer runs out.
-      </p>
+
+      {/* Payment window open */}
+      {pending && (
+        <div className="seats-panel__actions">
+          {booking.youOwePaise > 0 && (
+            <button className="btn btn--accent" disabled={paying} onClick={() => pay()}>
+              {paying ? "Opening payment…" : split ? `Pay your share ${rupees(booking.youOwePaise)}` : `Pay ${rupees(booking.youOwePaise)}`}
+            </button>
+          )}
+          {split && booking.youAreLeader && booking.paidPaise < booking.totalPaise && (
+            <button className="btn btn--ghost" disabled={paying} onClick={() => pay("PAY_FOR_ALL")}
+              title="Pay for everyone who hasn't paid yet">
+              Pay the rest for everyone ({rupees(booking.totalPaise - booking.paidPaise)})
+            </button>
+          )}
+          {split && booking.youOwePaise === 0 && <p className="muted">You've paid. Waiting for the others…</p>}
+          {split && booking.youAreLeader && (
+            <a className="btn btn--whatsapp btn--small" target="_blank" rel="noopener noreferrer"
+              href={`https://wa.me/?text=${encodeURIComponent(`Please pay your Ticktit share for ${group.item.title} in the next ${Math.max(1, Math.ceil((left ?? 0) / 60))} min, or the seats are released: ${group.shareLink}`)}`}>
+              Remind on WhatsApp
+            </a>
+          )}
+        </div>
+      )}
+      {pending && (
+        <p className="muted small">
+          If the time runs out before everything is paid, the seats are released and everyone who paid is refunded in full automatically.
+        </p>
+      )}
     </section>
   );
 }

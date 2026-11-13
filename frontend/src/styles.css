@@ -342,3 +342,12 @@ main { min-height: calc(100vh - 220px); }
 .small { font-size: 0.85rem; }
 .group-cancel { text-align: center; margin-top: 16px; }
 .payment-soon { background: var(--brand-soft); color: var(--ink-2); border-radius: 10px; padding: 10px 14px; font-size: 0.9rem; margin: 8px 0 0; }
+
+/* ---------- payment ---------- */
+.tag { display: inline-block; margin-left: 6px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 999px; background: #fff4d6; color: #8a5a00; }
+.tag--paid { background: var(--ok-soft); color: var(--ok); }
+.share--paid strong { color: var(--ok); }
+.share--due strong { color: #a86a00; }
+.result { text-align: center; }
+.result__icon { width: 56px; height: 56px; margin: 0 auto 8px; border-radius: 50%; display: grid; place-items: center; font-size: 1.8rem; font-weight: 800; background: var(--ok-soft); color: var(--ok); }
+.result--failed { border-top: 4px solid var(--danger); }
