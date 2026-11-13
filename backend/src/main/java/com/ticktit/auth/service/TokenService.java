@@ -31,6 +31,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TokenService {
 
+    /**
+     * A token presented again within this time after its rotation is treated as a lost response, not theft.
+     * Later than that, reuse revokes the whole family. Same idea as Auth0's "reuse interval".
+     */
+    static final Duration REUSE_GRACE = Duration.ofSeconds(30);
+
     private final JwtEncoder jwtEncoder;
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserRepository userRepository;
@@ -62,12 +68,14 @@ public class TokenService {
         RefreshToken current = refreshTokenRepository.findByTokenHash(Secrets.sha256Hex(rawRefreshToken))  // row locked
                 .orElseThrow(() -> new ApiException(ErrorCode.REFRESH_TOKEN_INVALID));
 
-        if (current.getUsedAt() != null) {
+        Instant now = Instant.now();
+        boolean alreadyUsed = current.getUsedAt() != null;
+        if (alreadyUsed && current.getUsedAt().isBefore(now.minus(REUSE_GRACE))) {
             log.warn("Refresh token reuse detected, revoking family {}", current.getFamilyId());
             refreshTokenRepository.deleteByFamilyId(current.getFamilyId());
             throw new ApiException(ErrorCode.REFRESH_TOKEN_INVALID);
         }
-        if (!current.getFamilyExpiresAt().isAfter(Instant.now())) {
+        if (!current.getFamilyExpiresAt().isAfter(now)) {
             refreshTokenRepository.deleteByFamilyId(current.getFamilyId());
             throw new ApiException(ErrorCode.REFRESH_TOKEN_INVALID);
         }
@@ -79,7 +87,11 @@ public class TokenService {
             throw new ApiException(ErrorCode.REFRESH_TOKEN_INVALID);
         }
 
-        current.setUsedAt(Instant.now());
+        if (!alreadyUsed) {
+            current.setUsedAt(now);
+        }
+        // reuse inside the grace period: the browser lost our last answer (reload, dropped network), so it never
+        // stored the new cookie. Give it a fresh pair in the same family instead of signing the user out.
         return newPair(user, current.getFamilyId(), current.getFamilyExpiresAt());
     }
 
