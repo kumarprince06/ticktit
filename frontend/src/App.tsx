@@ -3,6 +3,8 @@ import { Route, Routes, useLocation } from "react-router-dom";
 import { RequireAuth } from "./auth/RequireAuth";
 import { Layout } from "./components/Layout";
 import { Account } from "./pages/Account";
+import { GroupPage } from "./pages/GroupPage";
+import { InvitePage } from "./pages/InvitePage";
 import { CheckEmail } from "./pages/auth/CheckEmail";
 import { ForgotPassword } from "./pages/auth/ForgotPassword";
 import { ResetPassword } from "./pages/auth/ResetPassword";
@@ -29,6 +31,8 @@ export function App() {
         <Route path="movies/:slug" element={<MovieDetail />} />
         <Route path="shows/:showId/seats" element={<RequireAuth><SeatPicker /></RequireAuth>} />
         <Route path="account" element={<RequireAuth><Account /></RequireAuth>} />
+        <Route path="groups/:id" element={<RequireAuth><GroupPage /></RequireAuth>} />
+        <Route path="g/:code" element={<InvitePage />} />
 
         <Route path="signin" element={<SignIn />} />
         <Route path="signup" element={<SignUp />} />

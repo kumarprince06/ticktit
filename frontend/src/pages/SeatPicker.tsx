@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ApiError } from "../api/client";
+import { groupApi } from "../api/groups";
 import { catalogApi, rupees, showTime, type Seat } from "../api/catalog";
 import { useApi } from "../hooks/useApi";
 import { NotFound } from "./NotFound";
@@ -16,6 +18,22 @@ export function SeatPicker() {
   const map = useApi(() => catalogApi.seats(showId), [showId]);
   const [selected, setSelected] = useState<string[]>([]);
   const [note, setNote] = useState<"solo" | "group" | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [groupError, setGroupError] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  /** Group first, seats later (PRD journey 1): make the group for this show and go invite friends. */
+  const startGroup = async () => {
+    setCreating(true);
+    setGroupError(null);
+    try {
+      const group = await groupApi.create(Number(showId));
+      navigate(`/groups/${group.groupId}`);
+    } catch (e) {
+      setGroupError(e instanceof ApiError ? e.message : "Couldn't create the group. Please try again.");
+      setCreating(false);
+    }
+  };
 
   // seats grouped by category, in drawing order, each block with its own grid size
   const blocks = useMemo(() => {
@@ -107,13 +125,16 @@ export function SeatPicker() {
                 Book for myself
               </button>
               {selected.length > 1 && (
-                <button className="btn btn--ghost" onClick={() => setNote("group")}
+                <button className="btn btn--ghost" disabled={creating} onClick={startGroup}
                   title="Share a link; each friend pays for their own seat">
-                  Book together
+                  {creating ? "Creating group…" : "Book together"}
                 </button>
               )}
             </div>
           </div>
+          {groupError && (
+            <div className="container"><p className="form-error" role="alert">{groupError}</p></div>
+          )}
           {note && (
             <div className="container">
               <p className="form-notice" role="status">
