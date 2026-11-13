@@ -40,15 +40,20 @@ No sign-in needed. Prices are in paise (ADR-009). Movies are addressed by slug. 
 
 ## Groups
 
+Group first, seats later (PRD journey 1): the organiser makes a group for a show, shares the link, friends join, then seats are locked for everyone (Bookings). A single booking is a group of one that pays for all.
+
 | Method | Path | Request | Response |
 |---|---|---|---|
-| POST ★ | `/groups` | `{showId}` | `201 {groupId, code, shareLink, whatsappShareUrl}` |
-| GET | `/groups/preview/{code}` (public) | - | `200 {movie, theatre, startsAt, memberCount, maxMembers, lockedSeats, status}` - no personal data |
-| POST | `/groups/{code}/join` | - | `200 {groupId}` / `400 GROUP_FULL` / `409 GROUP_BOOKED / GROUP_CANCELLED / PAYMENT_IN_PROGRESS` |
-| GET | `/groups/{id}` | - | `200 {group, members:[{userId, name, status, seats, sharePaise}], activeBooking:{id, status, lockExpiresAt, paymentDeadline}}` |
-| DELETE | `/groups/{id}/members/{userId}` | - | `204` (leader; auto-refund if member PAID) / `409 BOOKING_CONFIRMED` |
-| DELETE | `/groups/{id}` | - | `204` (leader; only if no successful payment) / `409 HAS_PAYMENTS` |
-| POST | `/groups/{id}/remind/{userId}` | - | `200 {whatsappUrl}` (leader) / `429` if reminded < 1 min ago |
+| POST ★ | `/groups` | `{showId}` | `201 {groupId, code, shareLink, whatsappShareUrl}` / `409 SHOW_NOT_BOOKABLE` |
+| GET | `/groups/preview/{code}` (public) | - | `200 {code, status, memberCount, maxMembers, item:{title, venue, city, detail, startsAt, link, bookable}}`, no names or personal data / `404` |
+| POST | `/groups/{code}/join` | - | `200 {groupId}` (joining twice is harmless) / `400 GROUP_FULL` / `409 GROUP_BOOKED / GROUP_CANCELLED` |
+| GET | `/groups/my` | - | `200 [{id, code, status, memberCount, youAreLeader, item}]` newest first |
+| GET | `/groups/{id}` | - | `200 {id, code, status, maxMembers, youAreLeader, item, members:[{userId, name, avatarUrl, role, status, you}], shareLink, whatsappShareUrl}` / `404` if you're not a member |
+| DELETE | `/groups/{id}/members/{userId}` | - | `204`: the organiser removes someone, or a member removes themselves (leave) / `403 NOT_LEADER` / `409 LEADER_CANNOT_LEAVE` |
+| DELETE | `/groups/{id}` | - | `204` organiser cancels / `403 NOT_LEADER` |
+| POST | `/groups/{id}/remind/{userId}` | - | Comes with the booking module (needs the payment window) |
+
+`{code}` is 6 characters without look-alikes (no 0/O, 1/I/L), case-insensitive. `{id}` and `{userId}` are public UUIDs.
 
 ## Bookings
 
