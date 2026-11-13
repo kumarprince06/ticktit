@@ -27,13 +27,16 @@
 
 ## Movies and Shows (public)
 
+No sign-in needed. Prices are in paise (ADR-009). Movies are addressed by slug. Show times are UTC instants; the app shows them in IST.
+
 | Method | Path | Response |
 |---|---|---|
-| GET | `/movies?city=Siliguri&language=Hindi&genre=Action&page=0` | `200 {content:[{id, title, posterUrl, rating, languages}], page, totalElements}` |
-| GET | `/movies/{id}` | `200 {id, title, posterUrl, durationMin, rating, synopsis, cast}` |
-| GET | `/shows?movieId=1&city=Siliguri&date=2026-11-21` | `200 [{id, theatre, screen, startsAt, prices:{CLASSIC, PRIME, RECLINER}, availableSeats, totalSeats}]` |
-| GET | `/shows/{id}/seats` | `200 {rows:[...], seats:[{seatNo, category, pricePaise, status, lockedByMyGroup, assignedTo}]}` - status `AVAILABLE` / `LOCKED` / `BOOKED` |
-| GET | `/shows/{id}/suggest?count=4&category=PRIME` | `200 {seats:["B3","B4","B5","B6"]}` or `{seats:null}` |
+| GET | `/cities` | `200 [{slug, name, state}]` |
+| GET | `/movies?city=siliguri&status=NOW_SHOWING&language=Hindi&genre=Action&q=kite&page=0&size=20` | `200 {content:[{slug, title, tagline, certification, genres, languages, durationMin, releaseDate, posterUrl, status}], page, size, totalElements}`. `NOW_SHOWING` (default) = has an upcoming show in the city; `COMING_SOON` ignores the city |
+| GET | `/movies/{slug}` | `200 {slug, title, tagline, synopsis, certification, genres, languages, formats, durationMin, releaseDate, cast:[{name, role, character}], posterUrl, trailerUrl, status}` / `404 NOT_FOUND` |
+| GET | `/shows?movie=paper-kites&city=siliguri&date=2026-11-21` | `200 [{id, theatre:{slug, name, area}, screen, language, format, startsAt, prices:{CLASSIC, PRIME, RECLINER}, availableSeats, totalSeats}]`, only shows not yet started, date in the city's time zone |
+| GET | `/shows/{id}/seats` | `200 {show:{...}, prices:{...}, seats:[{seatNo, row, col, gridRow, gridCol, category, pricePaise, status}]}`. status `AVAILABLE` / `BOOKED` / `BLOCKED`; `LOCKED`, `lockedByMyGroup` and `assignedTo` are added by the booking module |
+| GET | `/shows/{id}/suggest?count=4&category=PRIME` | Moved to the booking module (needs the Redis seat locks) |
 
 ## Groups
 

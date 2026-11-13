@@ -23,6 +23,11 @@ spring:
       enabled: true                  # @Async email sending and slow I/O use cheap virtual threads
 
 app:
+  demo-data:
+    enabled: ${DEMO_DATA:true}   # fictional cinemas, movies and a rolling 7-day show schedule (off in prod)
+    # local-only admin account, created once if missing (sign-in still needs the email OTP, which lands in Mailpit)
+    admin-email: ${DEMO_ADMIN_EMAIL:admin@yopmail.com}
+    admin-password: ${DEMO_ADMIN_PASSWORD:Admin@123}
   base-url: ${APP_BASE_URL:http://localhost:5173}   # frontend URL, used to build links in emails
   mail:
     from: ${MAIL_FROM:Ticktit <no-reply@ticktit.local>}

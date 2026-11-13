@@ -27,7 +27,7 @@ export function App() {
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="movies/:slug" element={<MovieDetail />} />
-        <Route path="movies/:slug/seats" element={<RequireAuth><SeatPicker /></RequireAuth>} />
+        <Route path="shows/:showId/seats" element={<RequireAuth><SeatPicker /></RequireAuth>} />
         <Route path="account" element={<RequireAuth><Account /></RequireAuth>} />
 
         <Route path="signin" element={<SignIn />} />

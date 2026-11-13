@@ -71,7 +71,7 @@ export function SignIn() {
 
   if (step === "otp") {
     return (
-      <AuthCard title="Check your email" subtitle={<>We sent a 6-digit code to <strong>{email}</strong>. It expires in 5 minutes.</>}>
+      <AuthCard showLogo={false} title="Check your email" subtitle={<>We sent a 6-digit code to <strong>{email}</strong>. It expires in 5 minutes.</>}>
         <form onSubmit={submitOtp} noValidate>
           <FormError message={error?.errors ? null : error?.message} />
           <FormNotice message={info} />
@@ -116,7 +116,7 @@ export function SignIn() {
   }
 
   return (
-    <AuthCard title="Sign in" subtitle="Welcome back. We'll email you a code to finish signing in.">
+    <AuthCard showLogo={false} title="Sign in" subtitle="Welcome back. We'll email you a code to finish signing in.">
       <form onSubmit={submitPassword} noValidate>
         <FormNotice message={notice} />
         <FormError message={error?.errors ? null : error?.message} />
